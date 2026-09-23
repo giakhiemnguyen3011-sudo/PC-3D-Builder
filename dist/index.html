@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC Builder 3D - Trình Mô Phỏng Lắp Ráp Máy Tính</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z'/></svg>">
+  <script type="module" crossorigin src="/assets/index-BMfvUm_I.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CkvZXK0Z.css">
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Crosshair -->
+  <div id="crosshair"></div>
+
+  <!-- In-game Hover Interaction Prompt -->
+  <div id="hud-prompt">
+    <span class="prompt-text">[Chuột trái] Tương tác</span>
+  </div>
+
+  <!-- HUD Top Bar -->
+  <div id="hud-top-bar">
+    <div class="game-logo">⚡ PC BUILDER 3D</div>
+    <div id="shiftlock-status" class="active">Shift-Lock: BẬT (Khóa tâm)</div>
+  </div>
+
+  <!-- Assembly Guide Quest Tracker -->
+  <div id="assembly-hud">
+    <div class="hud-header">
+      <div id="current-step-badge">BƯỚC 1 / 12</div>
+      <button id="btn-toggle-steps">▼ Xem 12 bước chuẩn</button>
+    </div>
+    <div id="assembly-progress-bar">
+      <div id="assembly-progress-fill"></div>
+    </div>
+    <div id="current-step-title">Mở nắp kính thùng máy</div>
+    <div id="current-step-desc">Nhấn vào nắp kính bên hông để tháo ra, chuẩn bị lắp đặt linh kiện.</div>
+    <div id="current-step-tip">💡 Mẹo: Luôn tháo kính cẩn thận và đặt nơi an toàn trước khi lắp main.</div>
+    <div id="steps-list"></div>
+  </div>
+
+  <!-- HUD Bottom Hotkeys Bar -->
+  <div id="hud-bottom-bar">
+    <div class="key-hint">
+      <span class="key-tag">W A S D</span>
+      <span>Di chuyển</span>
+    </div>
+    <div class="key-hint">
+      <span class="key-tag">Chuột trái</span>
+      <span>Cầm / Lắp ráp</span>
+    </div>
+    <div class="key-hint">
+      <span class="key-tag">Chuột phải (giữ)</span>
+      <span>Xoay vật thể</span>
+    </div>
+    <div class="key-hint">
+      <span class="key-tag">E</span>
+      <span>Cất vào túi</span>
+    </div>
+    <div class="key-hint active">
+      <span class="key-tag">R</span>
+      <span>Kho đồ (Inventory)</span>
+    </div>
+    <div class="key-hint">
+      <span class="key-tag">Shift</span>
+      <span>Thoát / Khóa Shift-Lock</span>
+    </div>
+  </div>
+
+  <!-- RPG Inventory Modal -->
+  <div id="inventory-modal">
+    <div class="rpg-inv-container">
+      <!-- Inventory Header -->
+      <div class="inv-top-bar">
+        <div class="inv-title-group">
+          <div class="inv-title">🎒 KHO LINH KIỆN & BA LÔ (INVENTORY)</div>
+          <div class="inv-capacity-badge">7 / 20 Ô CHỨA</div>
+        </div>
+        <button id="btn-close-inventory" title="Đóng (Phím R hoặc ESC)">✕</button>
+      </div>
+
+      <!-- Upper Section: 3D Preview (Square) + Specs Sheet (Rectangle) -->
+      <div class="inv-upper-section">
+        <!-- Top Left Square: 3D Interactive Model Preview -->
+        <div class="inv-preview-box">
+          <canvas id="item-preview-canvas"></canvas>
+          <div class="preview-overlay-hint">🔄 Kéo chuột để xoay 360°</div>
+        </div>
+
+        <!-- Top Right Rectangle: Specs Sheet -->
+        <div class="inv-specs-panel">
+          <div>
+            <div class="specs-header">
+              <div>
+                <span id="inv-item-tag" class="inv-tag tag-motherboard">Tag: Motherboard</span>
+                <div id="inv-item-name">ASUS ROG STRIX Z370-E GAMING</div>
+                <div id="inv-item-brand">ASUS Republic of Gamers • 4,890,000 đ</div>
+              </div>
+              <div id="inv-item-status" class="inv-status-badge status-bag">Trong túi đồ</div>
+            </div>
+
+            <!-- Technical Specifications Table -->
+            <div id="inv-specs-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <div>
+            <!-- Beginner Tip / Lore -->
+            <div id="inv-item-tip">
+              💡 Bo mạch chủ là xương sống kết nối toàn bộ hệ thống máy tính.
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="inv-action-buttons">
+              <button id="btn-inv-equip" class="btn-rpg btn-primary">⚡ Cầm trên tay (Equip)</button>
+              <button id="btn-inv-install" class="btn-rpg btn-primary">🛠️ Lắp vào thùng máy</button>
+              <button id="btn-inv-shelf" class="btn-rpg btn-secondary">📦 Cất lên kệ sắt</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lower Section: Filter Tabs & Backpack Grid Slots -->
+      <div class="inv-lower-section">
+        <div id="inventory-tabs">
+          <!-- Filter Tabs dynamically populated -->
+        </div>
+        <div id="inventory-grid">
+          <!-- Slots dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-logo">PC BUILDER 3D SIMULATOR</div>
+    <div class="loading-subtitle">Khởi tạo không gian phòng 3D & nạp dữ liệu linh kiện...</div>
+    <div id="loading-bar-wrap">
+      <div id="loading-bar-fill"></div>
+    </div>
+    <div id="loading-text">Đang tải tài nguyên mô hình 3D... 0%</div>
+  </div>
+
+</body>
+</html>
