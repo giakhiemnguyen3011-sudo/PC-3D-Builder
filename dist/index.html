@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PC Builder 3D - Trình Mô Phỏng Lắp Ráp Máy Tính</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z'/></svg>">
-  <script type="module" crossorigin src="/assets/index-BMfvUm_I.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CkvZXK0Z.css">
+  <script type="module" crossorigin src="/assets/index-Dg6Ow3ia.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DXQZwDgB.css">
 </head>
 <body>
   <!-- 3D Canvas -->
@@ -49,15 +49,15 @@
     </div>
     <div class="key-hint">
       <span class="key-tag">Chuột trái</span>
-      <span>Cầm / Lắp ráp</span>
+      <span>Cầm / Lắp ráp / Thả</span>
     </div>
     <div class="key-hint">
       <span class="key-tag">Chuột phải (giữ)</span>
-      <span>Xoay vật thể</span>
+      <span>Xoay vật thể 360°</span>
     </div>
-    <div class="key-hint">
+    <div class="key-hint active">
       <span class="key-tag">E</span>
-      <span>Cất vào túi</span>
+      <span>Cất vào túi đồ</span>
     </div>
     <div class="key-hint active">
       <span class="key-tag">R</span>
@@ -69,67 +69,84 @@
     </div>
   </div>
 
-  <!-- RPG Inventory Modal -->
+  <!-- RPG Inventory Modal with Square Slots Grid -->
   <div id="inventory-modal">
     <div class="rpg-inv-container">
       <!-- Inventory Header -->
       <div class="inv-top-bar">
         <div class="inv-title-group">
           <div class="inv-title">🎒 KHO LINH KIỆN & BA LÔ (INVENTORY)</div>
-          <div class="inv-capacity-badge">7 / 20 Ô CHỨA</div>
+          <div id="inv-capacity-badge" class="inv-capacity-badge">0 / 24 Ô CHỨA</div>
+        </div>
+        <div class="inv-header-hints">
+          <span class="inv-hint-tag">🖱️ [Chuột trái] Chọn / Bỏ chọn</span>
+          <span class="inv-hint-tag">🗑️ [E] Vứt ra ngoài</span>
+          <span class="inv-hint-tag">✕ [R / ESC] Đóng</span>
         </div>
         <button id="btn-close-inventory" title="Đóng (Phím R hoặc ESC)">✕</button>
       </div>
 
-      <!-- Upper Section: 3D Preview (Square) + Specs Sheet (Rectangle) -->
-      <div class="inv-upper-section">
-        <!-- Top Left Square: 3D Interactive Model Preview -->
-        <div class="inv-preview-box">
-          <canvas id="item-preview-canvas"></canvas>
-          <div class="preview-overlay-hint">🔄 Kéo chuột để xoay 360°</div>
+      <!-- Main Content: Left Slots Grid + Right Detail Panel -->
+      <div class="inv-body">
+        <!-- Left: Square Slots Grid (Dải ô vuông trống) -->
+        <div class="inv-grid-section">
+          <div class="inv-section-title">
+            <span>CÁC NGĂN CHỨA LINH KIỆN</span>
+            <span class="inv-section-sub">Nhấp vào ô có đồ để xem thông số & tag</span>
+          </div>
+          <div id="inventory-grid" class="inventory-slots-grid">
+            <!-- 24 square slots rendered dynamically -->
+          </div>
         </div>
 
-        <!-- Top Right Rectangle: Specs Sheet -->
-        <div class="inv-specs-panel">
-          <div>
-            <div class="specs-header">
-              <div>
-                <span id="inv-item-tag" class="inv-tag tag-motherboard">Tag: Motherboard</span>
-                <div id="inv-item-name">ASUS ROG STRIX Z370-E GAMING</div>
-                <div id="inv-item-brand">ASUS Republic of Gamers • 4,890,000 đ</div>
+        <!-- Right: Hardware Details Panel (Slides/shows on selection) -->
+        <div id="inv-detail-panel" class="inv-detail-panel">
+          <!-- Empty State -->
+          <div id="inv-empty-detail" class="inv-empty-detail">
+            <div class="empty-icon">📦</div>
+            <div class="empty-title">Chưa chọn linh kiện nào</div>
+            <div class="empty-desc">
+              Nhấp <strong>Chuột trái</strong> vào một ô vuông có chứa linh kiện để xem thông số kỹ thuật và tag phần cứng.<br><br>
+              Nhấp lần nữa để <strong>Bỏ chọn</strong>.<br><br>
+              Khi đang chọn một ô, nhấn phím <strong>[E]</strong> để vứt linh kiện ra ngoài theo hướng tâm ngắm.
+            </div>
+          </div>
+
+          <!-- Active Detail View -->
+          <div id="inv-active-detail" class="inv-active-detail" style="display: none;">
+            <!-- 3D Interactive Model Preview Box (Square) -->
+            <div class="inv-preview-box">
+              <canvas id="item-preview-canvas"></canvas>
+              <div class="preview-overlay-hint">🔄 Kéo chuột để xoay 360°</div>
+            </div>
+
+            <!-- Specs Sheet -->
+            <div class="inv-specs-panel">
+              <div class="specs-header">
+                <div>
+                  <span id="inv-item-tag" class="inv-tag tag-motherboard">Tag: Motherboard</span>
+                  <div id="inv-item-name">Tên linh kiện</div>
+                  <div id="inv-item-brand">Thương hiệu • Giá thành</div>
+                </div>
               </div>
-              <div id="inv-item-status" class="inv-status-badge status-bag">Trong túi đồ</div>
-            </div>
 
-            <!-- Technical Specifications Table -->
-            <div id="inv-specs-list">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
+              <!-- Technical Specifications Table (From Wiki) -->
+              <div id="inv-specs-list" class="inv-specs-list">
+                <!-- Dynamically populated -->
+              </div>
 
-          <div>
-            <!-- Beginner Tip / Lore -->
-            <div id="inv-item-tip">
-              💡 Bo mạch chủ là xương sống kết nối toàn bộ hệ thống máy tính.
-            </div>
+              <!-- Beginner Tip / Lore -->
+              <div id="inv-item-tip" class="inv-item-tip">
+                <!-- Beginner tips -->
+              </div>
 
-            <!-- Action Buttons -->
-            <div class="inv-action-buttons">
-              <button id="btn-inv-equip" class="btn-rpg btn-primary">⚡ Cầm trên tay (Equip)</button>
-              <button id="btn-inv-install" class="btn-rpg btn-primary">🛠️ Lắp vào thùng máy</button>
-              <button id="btn-inv-shelf" class="btn-rpg btn-secondary">📦 Cất lên kệ sắt</button>
+              <!-- Action Buttons -->
+              <div class="inv-action-buttons">
+                <button id="btn-inv-equip" class="btn-rpg btn-primary">⚡ Cầm trên tay (Equip)</button>
+                <button id="btn-inv-drop" class="btn-rpg btn-secondary">🗑️ Vứt ra ngoài (Phím E)</button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Lower Section: Filter Tabs & Backpack Grid Slots -->
-      <div class="inv-lower-section">
-        <div id="inventory-tabs">
-          <!-- Filter Tabs dynamically populated -->
-        </div>
-        <div id="inventory-grid">
-          <!-- Slots dynamically populated -->
         </div>
       </div>
     </div>

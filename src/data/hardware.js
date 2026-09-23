@@ -1,7 +1,7 @@
 /**
  * Hardware Components Database
  * Contains realistic technical specifications, tags, 3D model paths, educational notes,
- * and calibrated baseRotation to correct non-flat / tilted model exports.
+ * calibrated baseRotation, and crisp SVG icons for Inventory slots.
  */
 
 export const HARDWARE_CATEGORIES = {
@@ -28,16 +28,26 @@ export const HARDWARE_ITEMS = [
     price: '4,890,000 đ',
     shelfPosition: { x: 3.2, y: 1.87, z: -0.8 },
     scale: 0.85,
-    // Calibrated baseRotation: FBX export was standing up facing Z; rotate -90 deg around X to lay flat with ports/VRM facing up
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="6" width="52" height="52" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+      <rect x="14" y="14" width="16" height="16" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+      <rect x="18" y="18" width="8" height="8" fill="#fbbf24"/>
+      <rect x="36" y="14" width="4" height="24" rx="1" fill="#38bdf8"/>
+      <rect x="44" y="14" width="4" height="24" rx="1" fill="#38bdf8"/>
+      <rect x="14" y="38" width="34" height="6" rx="1" fill="#22c55e"/>
+      <rect x="14" y="48" width="24" height="4" rx="1" fill="#a855f7"/>
+    </svg>`,
     specs: [
-      { label: 'Socket', value: 'LGA 1151 (Intel Gen 8/9)' },
-      { label: 'Chipset', value: 'Intel Z370 Express' },
-      { label: 'Kích thước', value: 'ATX (30.5 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '4x DDR4 DIMM (Max 64GB, 4000MHz OC)' },
+      { label: 'Socket', value: 'LGA 1151 (Intel Core Gen 8/9)' },
+      { label: 'Chipset', value: 'Intel Z370 Express Chipset' },
+      { label: 'Kích thước Form Factor', value: 'ATX (30.5 cm x 24.4 cm)' },
+      { label: 'Khe RAM', value: '4x DDR4 DIMM (Tối đa 64GB, 4000MHz OC)' },
       { label: 'Khe PCIe', value: '2x PCIe 3.0 x16 SafeSlot, 4x PCIe x1' },
-      { label: 'Lưu trữ', value: '2x M.2 NVMe PCIe x4, 6x SATA III 6Gb/s' },
-      { label: 'LED RGB', value: 'Aura Sync RGB Lighting' }
+      { label: 'Cổng M.2 & SATA', value: '2x M.2 NVMe PCIe 3.0 x4, 6x SATA III 6Gb/s' },
+      { label: 'Âm thanh', value: 'ROG SupremeFX S1220A 8-Channel HD Audio' },
+      { label: 'Kết nối mạng', value: 'Intel I219-V Gigabit LAN & Wi-Fi 802.11ac' },
+      { label: 'LED RGB', value: 'ASUS Aura Sync RGB Header' }
     ],
     description: 'Bo mạch chủ chuẩn Gaming cao cấp trang bị tản nhiệt VRM dày bản, tích hợp Wi-Fi AC và âm thanh SupremeFX S1220A chuyên nghiệp.',
     beginnerTip: '💡 Bo mạch chủ là nền móng kết nối tất cả linh kiện. Lắp CPU, RAM và SSD M.2 lên bo mạch chủ trước khi gắn vào thùng case để dễ thao tác nhất!',
@@ -55,16 +65,24 @@ export const HARDWARE_ITEMS = [
     price: '3,290,000 đ',
     shelfPosition: { x: 3.2, y: 1.86, z: 0.1 },
     scale: 1.8,
-    // Calibrated baseRotation: Collada export had thin Z axis; rotate -90 deg around X to lay flat with heat spreader facing up
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="10" width="44" height="44" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
+      <rect x="18" y="18" width="28" height="28" rx="3" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/>
+      <circle cx="23" cy="23" r="2" fill="#fbbf24"/>
+      <text x="32" y="35" font-size="7" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">RYZEN</text>
+      <path d="M10 16h-4M10 24h-4M10 32h-4M10 40h-4M10 48h-4" stroke="#fbbf24" stroke-width="2"/>
+      <path d="M54 16h4M54 24h4M54 32h4M54 40h4M54 48h4" stroke="#fbbf24" stroke-width="2"/>
+    </svg>`,
     specs: [
-      { label: 'Số nhân / Luồng', value: '6 Cores / 12 Threads' },
-      { label: 'Xung cơ bản', value: '3.6 GHz (Boost 4.2 GHz)' },
-      { label: 'Kiến trúc', value: 'Zen 2 (7nm FinFET TSMC)' },
-      { label: 'Bộ nhớ đệm', value: '32MB GameCache L3' },
-      { label: 'Điện năng (TDP)', value: '65 Watts' },
-      { label: 'Socket tương thích', value: 'AM4 / LGA Adapter' },
-      { label: 'Hỗ trợ PCIe', value: 'PCIe 4.0 x16' }
+      { label: 'Số nhân / Số luồng', value: '6 Nhân / 12 Luồng (Zen 2)' },
+      { label: 'Xung nhịp cơ bản', value: '3.6 GHz (Tăng tốc tối đa 4.2 GHz)' },
+      { label: 'Tiến trình chế tạo', value: 'TSMC 7nm FinFET' },
+      { label: 'Bộ nhớ đệm L3', value: '32MB GameCache' },
+      { label: 'Điện năng tiêu thụ (TDP)', value: '65 Watts' },
+      { label: 'Chuẩn Socket', value: 'AMD Socket AM4' },
+      { label: 'Phiên bản PCIe', value: 'PCIe 4.0 x16 Ready' },
+      { label: 'Hỗ trợ RAM', value: 'DDR4 Dual-Channel lên tới 3200MHz' }
     ],
     description: 'Bộ vi xử lý quốc dân với hiệu năng đa nhân vượt trội, cân bằng hoàn hảo giữa chơi game eSports và làm việc đồ họa mượt mà.',
     beginnerTip: '💡 Khi lắp CPU, hãy tìm biểu tượng tam giác vàng ở góc con chip và căn trùng khớp với dấu tam giác trên socket. Nhẹ nhàng đặt xuống, tuyệt đối không dùng lực đè mạnh!',
@@ -82,16 +100,22 @@ export const HARDWARE_ITEMS = [
     price: '890,000 đ',
     shelfPosition: { x: 3.2, y: 1.86, z: 0.9 },
     scale: 0.9,
-    // Calibrated baseRotation: Model was tilted on its side; rotate +90 deg around X to stand upright on heatpipes
     baseRotation: { x: Math.PI / 2, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="10" width="36" height="38" rx="4" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+      <circle cx="32" cy="29" r="13" stroke="#c084fc" stroke-width="2"/>
+      <circle cx="32" cy="29" r="3.5" fill="#fbbf24"/>
+      <path d="M32 16v8M32 34v8M19 29h8M37 29h8" stroke="#c084fc" stroke-width="2" stroke-linecap="round"/>
+      <path d="M20 48v8M28 48v8M36 48v8M44 48v8" stroke="#f97316" stroke-width="2.5"/>
+    </svg>`,
     specs: [
-      { label: 'Dạng tản nhiệt', value: 'Tháp tản nhiệt khí (Single Tower)' },
-      { label: 'Ống dẫn nhiệt', value: '4 ống đồng Direct Contact 6mm' },
+      { label: 'Dạng tản nhiệt', value: 'Tháp tản nhiệt khí (Single Tower Heatsink)' },
+      { label: 'Ống dẫn nhiệt (Heatpipes)', value: '4 ống đồng Direct Contact 6mm mạ niken' },
       { label: 'Kích thước quạt', value: '120 x 120 x 25 mm Silencio FP' },
-      { label: 'Tốc độ quay', value: '650 - 2,000 RPM (PWM) ± 10%' },
-      { label: 'Lưu lượng gió', value: '59 CFM max, Áp suất 2.1 mmH2O' },
-      { label: 'Độ ồn tối đa', value: '8 - 30 dBA (Siêu êm)' },
-      { label: 'Tương thích', value: 'Intel LGA 1700/1200/115x, AMD AM4/AM5' }
+      { label: 'Tốc độ quay quạt', value: '650 - 2,000 RPM (PWM) ± 10%' },
+      { label: 'Lưu lượng gió tối đa', value: '59 CFM, Áp suất khí 2.1 mmH2O' },
+      { label: 'Độ ồn hoạt động', value: '8 - 30 dBA (Vận hành cực êm)' },
+      { label: 'Socket tương thích', value: 'Intel LGA 1700/1200/115x & AMD AM4/AM5' }
     ],
     description: 'Giải pháp làm mát khí kinh điển với các lá tản nhiệt nhôm mạ niken tối ưu khí động học và cụm tiếp xúc 4 ống đồng nguyên chất.',
     beginnerTip: '💡 Đừng quên bôi một lượng keo tản nhiệt (cỡ hạt đậu) lên giữa nắp lưng CPU trước khi siết ốc tản nhiệt để truyền nhiệt tốt nhất!',
@@ -109,16 +133,31 @@ export const HARDWARE_ITEMS = [
     price: '1,750,000 đ',
     shelfPosition: { x: 3.2, y: 1.36, z: -0.8 },
     scale: 1.4,
-    // Calibrated baseRotation: FBX export stood vertically; rotate -90 deg around X so light bar is on top or stands upright
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
+      <rect x="10" y="20" width="44" height="6" rx="2" fill="url(#rgbGrad)"/>
+      <rect x="14" y="30" width="8" height="10" fill="#334155"/>
+      <rect x="26" y="30" width="8" height="10" fill="#334155"/>
+      <rect x="38" y="30" width="8" height="10" fill="#334155"/>
+      <path d="M12 46v4M16 46v4M20 46v4M24 46v4M36 46v4M40 46v4M44 46v4M48 46v4" stroke="#fbbf24" stroke-width="1.5"/>
+      <defs>
+        <linearGradient id="rgbGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="50%" stop-color="#ec4899"/>
+          <stop offset="100%" stop-color="#fbbf24"/>
+        </linearGradient>
+      </defs>
+    </svg>`,
     specs: [
-      { label: 'Dung lượng kit', value: '16GB (2 thanh x 8GB)' },
+      { label: 'Dung lượng bộ nhớ', value: '16GB (Kit 2 thanh x 8GB)' },
       { label: 'Chuẩn RAM', value: 'DDR4 Unbuffered DIMM' },
-      { label: 'Tốc độ Bus', value: '3200 MHz (PC4-25600)' },
-      { label: 'Độ trễ (Timing)', value: 'CL16-18-18-38' },
-      { label: 'Điện áp định mức', value: '1.35V (Intel XMP 2.0 Ready)' },
-      { label: 'Đèn LED', value: 'RGB Dynamic Flow 5 vùng sáng' },
-      { label: 'Tản nhiệt', value: 'Nhôm xước hairline cao cấp' }
+      { label: 'Tốc độ Bus RAM', value: '3200 MHz (PC4-25600)' },
+      { label: 'Độ trễ Timing (CAS)', value: 'CL16-18-18-38' },
+      { label: 'Điện áp danh định', value: '1.35V' },
+      { label: 'Cấu hình ép xung', value: 'Intel XMP 2.0 (Extreme Memory Profile)' },
+      { label: 'Hiệu ứng ánh sáng', value: 'LED RGB Dynamic Flow 5 vùng sáng' },
+      { label: 'Chất liệu tản nhiệt', value: 'Hợp kim nhôm xước hairline cao cấp' }
     ],
     description: 'Thanh RAM cao cấp hàng đầu thế giới với dải LED RGB cầu vồng sống động cùng IC được tuyển chọn kỹ lưỡng cho khả năng ép xung tối đa.',
     beginnerTip: '💡 Khi cắm 2 thanh RAM trên bo mạch chủ có 4 khe, hãy cắm vào khe 2 và khe 4 (khe DIMM A2 & B2) để kích hoạt chế độ Kênh Đôi (Dual-Channel) giúp tăng gấp đôi băng thông nhớ!',
@@ -136,16 +175,22 @@ export const HARDWARE_ITEMS = [
     price: '1,450,000 đ',
     shelfPosition: { x: 3.2, y: 1.36, z: 0.1 },
     scale: 1.5,
-    // Calibrated baseRotation: FBX export was rotated sideways; rotate -90 deg around X so label is facing up
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="12" y="10" width="40" height="44" rx="4" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
+      <rect x="26" y="24" width="12" height="12" fill="#f97316"/>
+      <text x="32" y="44" font-size="6" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">SAMSUNG</text>
+      <rect x="20" y="10" width="24" height="3" fill="#fbbf24"/>
+    </svg>`,
     specs: [
-      { label: 'Dung lượng', value: '500 GB' },
-      { label: 'Kích thước chuẩn', value: '2.5 inch (7mm mỏng nhẹ)' },
-      { label: 'Giao tiếp', value: 'SATA III 6Gb/s (tương thích SATA II)' },
+      { label: 'Dung lượng lưu trữ', value: '500 GB' },
+      { label: 'Kích thước Form Factor', value: '2.5 inch (Độ dày 6.8 mm)' },
+      { label: 'Giao tiếp kết nối', value: 'SATA III 6Gb/s' },
       { label: 'Tốc độ đọc tuần tự', value: 'Lên tới 550 MB/s' },
       { label: 'Tốc độ ghi tuần tự', value: 'Lên tới 520 MB/s' },
-      { label: 'Công nghệ chip nhớ', value: 'Samsung V-NAND 3-bit MLC (TLC)' },
-      { label: 'Độ bền (TBW)', value: '300 TBW (Bảo hành 5 năm)' }
+      { label: 'Công nghệ NAND Flash', value: 'Samsung V-NAND 3-bit MLC (3D TLC)' },
+      { label: 'Bộ điều khiển Controller', value: 'Samsung MJX Controller' },
+      { label: 'Độ bền ghi (TBW)', value: '300 TBW (Bảo hành 5 năm)' }
     ],
     description: 'Ổ cứng SSD thể rắn huyền thoại từ Samsung đem lại độ bền bỉ phi thường, khởi động hệ điều hành và tải ứng dụng chỉ trong chớp mắt.',
     beginnerTip: '💡 Ổ cứng SSD không có bộ phận chuyển động cơ học nên chống sốc cực tốt và hoàn toàn im lặng. Kết nối cáp dữ liệu SATA từ ổ cứng vào bo mạch chủ và cáp nguồn từ PSU!',
@@ -164,14 +209,21 @@ export const HARDWARE_ITEMS = [
     shelfPosition: { x: 3.2, y: 1.36, z: 0.9 },
     scale: 1.0,
     baseRotation: { x: 0, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="12" width="44" height="40" rx="4" fill="#0f172a" stroke="#f97316" stroke-width="2"/>
+      <circle cx="32" cy="32" r="14" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <circle cx="32" cy="32" r="4" fill="#f97316"/>
+      <rect x="14" y="16" width="6" height="4" fill="#ef4444"/>
+      <path d="M46 16v12M50 16v12" stroke="#fbbf24" stroke-width="1.5"/>
+    </svg>`,
     specs: [
-      { label: 'Công suất thực', value: '650 Watts liên tục' },
-      { label: 'Chứng nhận hiệu suất', value: '80 PLUS Bronze (Hiệu suất > 85%)' },
-      { label: 'Hệ thống cáp', value: 'Semi-Modular (Bọc lưới đen gọn gàng)' },
-      { label: 'Kích thước quạt', value: '120mm LDB Fan điều tốc tự động' },
-      { label: 'Mạch bảo vệ', value: 'OVP, OPP, SCP, OCP, UVP, OTP' },
-      { label: 'Đầu nối cấp nguồn', value: '1x 24-Pin ATX, 1x 8-Pin EPS CPU, 2x 8-Pin PCIe, 6x SATA' },
-      { label: 'Chuẩn nguồn', value: 'ATX 12V v2.4' }
+      { label: 'Công suất thực định mức', value: '650 Watts liên tục' },
+      { label: 'Chứng nhận hiệu suất', value: '80 PLUS Bronze (Hiệu suất đạt > 85%)' },
+      { label: 'Dạng cáp nguồn', value: 'Semi-Modular (Cáp dẹt đen chống rối)' },
+      { label: 'Quạt làm mát', value: '120mm Silent LDB Fan điều tốc tự động' },
+      { label: 'Các chế độ bảo vệ', value: 'OVP, OPP, SCP, OCP, UVP, OTP' },
+      { label: 'Đầu cấp nguồn (Connectors)', value: '1x 24-Pin ATX, 1x 8-Pin CPU EPS, 2x 8-Pin PCIe, 6x SATA' },
+      { label: 'Đường điện 12V', value: 'Single Rail 12V 54A công suất tối đa' }
     ],
     description: 'Trái tim cấp năng lượng bền bỉ cho toàn bộ dàn máy với tụ điện thể rắn cao cấp chịu nhiệt 105°C và đường 12V Single Rail công suất cao.',
     beginnerTip: '💡 Luôn lắp nguồn với quạt hút hướng xuống lưới lọc bụi dưới đáy thùng máy để hút không khí mát từ bên ngoài phòng vào làm mát linh kiện nguồn!',
@@ -190,13 +242,23 @@ export const HARDWARE_ITEMS = [
     shelfPosition: { x: 3.2, y: 0.86, z: -0.4 },
     scale: 1.0,
     baseRotation: { x: 0, y: 0, z: 0 },
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="16" width="52" height="32" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+      <circle cx="22" cy="32" r="10" stroke="#4ade80" stroke-width="2"/>
+      <circle cx="22" cy="32" r="3" fill="#22c55e"/>
+      <circle cx="44" cy="32" r="10" stroke="#4ade80" stroke-width="2"/>
+      <circle cx="44" cy="32" r="3" fill="#22c55e"/>
+      <rect x="14" y="48" width="24" height="4" fill="#fbbf24"/>
+      <rect x="4" y="12" width="3" height="40" fill="#94a3b8"/>
+    </svg>`,
     specs: [
-      { label: 'Nhân đồ họa', value: '10,496 CUDA Cores' },
-      { label: 'Bộ nhớ VRAM', value: '24 GB GDDR6X (Cực khủng)' },
-      { label: 'Băng thông bộ nhớ', value: '384-bit (936 GB/s)' },
-      { label: 'Xung Boost', value: '1.70 GHz' },
-      { label: 'Công nghệ AI & RT', value: 'Ray Tracing Gen 2 & Tensor Cores Gen 3' },
-      { label: 'Công suất tiêu thụ', value: '350 Watts (Cần 2 đầu 8-Pin PCIe)' },
+      { label: 'Nhân đồ họa CUDA', value: '10,496 CUDA Cores' },
+      { label: 'Bộ nhớ VRAM', value: '24 GB GDDR6X (Băng thông 936 GB/s)' },
+      { label: 'Độ rộng băng thông bus', value: '384-bit' },
+      { label: 'Xung nhịp Boost Clock', value: '1.70 GHz' },
+      { label: 'Công nghệ AI & Ray Tracing', value: 'RT Cores Gen 2 & Tensor Cores Gen 3 (DLSS)' },
+      { label: 'Công suất tiêu thụ TDP', value: '350 Watts' },
+      { label: 'Nguồn phụ yêu cầu', value: '2x 8-Pin PCIe (Khuyến nghị nguồn > 750W)' },
       { label: 'Cổng xuất hình', value: '1x HDMI 2.1, 3x DisplayPort 1.4a' }
     ],
     description: 'Quái thú đồ họa (BFGPU) đỉnh cao nhất thế giới cho phép trải nghiệm game mượt mà ở độ phân giải 8K HDR và dựng hình 3D, Render video chuyên nghiệp.',

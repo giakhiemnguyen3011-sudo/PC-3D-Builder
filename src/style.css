@@ -465,26 +465,224 @@ body, html {
   transform: scale(1.05);
 }
 
-/* Upper Section: 3D Preview (Left Square) + Specs Sheet (Right Rectangle) */
-.inv-upper-section {
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 20px;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
+/* Inventory Header Hints */
+.inv-header-hints {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-/* Left Square: 3D Preview */
+.inv-hint-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Inventory Body: 2-Column Layout */
+.inv-body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  padding: 20px 24px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left: Slots Grid Section */
+.inv-grid-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inv-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--accent-cyan);
+  letter-spacing: 0.5px;
+}
+
+.inv-section-sub {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+/* Grid of 24 Square Slots */
+.inventory-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Base Square Slot */
+.inv-slot {
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 6px;
+  user-select: none;
+}
+
+/* Empty Slot */
+.inv-slot.empty {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1.5px dashed rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.2);
+  cursor: default;
+}
+
+.inv-slot.empty:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.slot-empty-cross {
+  font-size: 22px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.slot-empty-num {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Occupied Slot */
+.inv-slot.occupied {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.inv-slot.occupied:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.inv-slot.occupied.selected {
+  border: 2px solid var(--accent-cyan);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(15, 23, 42, 0.95) 100%);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.45), inset 0 0 12px rgba(56, 189, 248, 0.2);
+  transform: scale(1.03);
+}
+
+.slot-image-wrap {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.slot-image-wrap svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.slot-name-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  text-align: center;
+  max-width: 90%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slot-tag-badge {
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  margin-top: 2px;
+}
+
+/* Right: Detail Panel */
+.inv-detail-panel {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Empty detail state */
+.inv-empty-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.empty-desc {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Active detail state */
+.inv-active-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 3D Model Preview Box */
 .inv-preview-box {
-  width: 360px;
-  height: 340px;
-  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+  width: 100%;
+  height: 200px;
+  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.95) 100%);
   border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: 14px;
+  border-radius: 12px;
   position: relative;
   overflow: hidden;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
 }
 
 #item-preview-canvas {
@@ -499,46 +697,39 @@ body, html {
 
 .preview-overlay-hint {
   position: absolute;
-  bottom: 10px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.7);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 11px;
+  background: rgba(15, 23, 42, 0.75);
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
   color: var(--text-muted);
   pointer-events: none;
 }
 
-/* Right Rectangle: Specifications Sheet */
+/* Specs Panel */
 .inv-specs-panel {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 340px;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 16px 20px;
-  overflow-y: auto;
+  gap: 10px;
 }
 
 .specs-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
 }
 
 .inv-tag {
   display: inline-block;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .tag-motherboard { background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; }
@@ -550,77 +741,70 @@ body, html {
 .tag-psu { background: rgba(249, 115, 22, 0.2); border: 1px solid #f97316; color: #f97316; }
 
 #inv-item-name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: #ffffff;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 #inv-item-brand {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
-.inv-status-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
-}
-
-.status-bag { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-.status-held { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-.status-installed { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-.status-shelf { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
-
-#inv-specs-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 16px;
-  margin: 10px 0;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.25);
+.inv-specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 11px;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .spec-row {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding-bottom: 3px;
 }
 
 .spec-label {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 .spec-value {
   color: #f1f5f9;
   font-weight: 600;
+  text-align: right;
+  max-width: 60%;
 }
 
-#inv-item-tip {
-  font-size: 12px;
+.inv-item-tip {
+  font-size: 11.5px;
   color: #bae6fd;
   background: rgba(56, 189, 248, 0.08);
   border-left: 3px solid var(--accent-cyan);
   padding: 6px 10px;
   border-radius: 0 6px 6px 0;
   line-height: 1.4;
-  margin-bottom: 12px;
 }
 
 .inv-action-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .btn-rpg {
   flex: 1;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: 8px;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -642,139 +826,14 @@ body, html {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #f8fafc;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.btn-rpg:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Lower Section: Backpack & Grid */
-.inv-lower-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 24px;
-  overflow: hidden;
-}
-
-#inventory-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.inv-tab {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.inv-tab:hover {
+  background: rgba(239, 68, 68, 0.3);
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.inv-tab.active {
-  background: var(--accent-cyan);
-  border-color: #38bdf8;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-#inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-  overflow-y: auto;
-  padding-right: 4px;
-  flex: 1;
-}
-
-.inv-slot {
-  background: var(--slot-bg);
-  border: 1px solid var(--slot-border);
-  border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.inv-slot:hover {
-  background: var(--slot-hover);
-  border-color: rgba(56, 189, 248, 0.4);
-  transform: translateY(-2px);
-}
-
-.inv-slot.selected {
-  background: rgba(56, 189, 248, 0.18);
-  border: 1.5px solid var(--accent-cyan);
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
-}
-
-.slot-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.slot-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 4px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.slot-tag {
-  font-size: 10px;
-  color: var(--accent-cyan);
-  font-weight: 600;
-}
-
-.slot-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #cbd5e1;
-}
-
-.inv-slot.installed .slot-badge {
-  background: rgba(34, 197, 94, 0.3);
-  color: #4ade80;
-}
-
-.inv-slot.held .slot-badge {
-  background: rgba(251, 191, 36, 0.3);
-  color: #fbbf24;
 }
 
 /* Toast Notifications */

@@ -47,16 +47,19 @@ export class Game {
       item => {
         this.placedItems.removeItem(item.id);
         this.shelf.hideItem(item.id);
+        const prevHeld = this.heldItemManager.getHeldItem();
+        if (prevHeld) {
+          this.inventoryUI.addItem(prevHeld);
+        }
         this.heldItemManager.holdItem(item);
       },
       // onInstallItem
       item => {
         this.tryInstallComponent(item.categoryKey, item.id);
       },
-      // onDropItem
+      // onDropItem (Drop from inventory to crosshair via E key or button)
       item => {
-        this.heldItemManager.clearHeldItem();
-        this.shelf.showItem(item.id);
+        this.dropItemAtCrosshair(item);
       },
       // onRequestLock
       () => {
@@ -168,6 +171,24 @@ export class Game {
     this.scene.add(rackSpot);
   }
 
+  dropItemAtCrosshair(item) {
+    let dropPos = null;
+    if (this.controls.lastRaycastHit && this.controls.lastRaycastHit.point) {
+      dropPos = this.controls.lastRaycastHit.point.clone();
+    } else {
+      const dir = new THREE.Vector3();
+      this.camera.getWorldDirection(dir);
+      dir.y = 0;
+      dir.normalize();
+      dropPos = this.camera.position.clone().add(dir.multiplyScalar(1.3));
+      dropPos.y = 0.85;
+    }
+    dropPos.y = Math.max(0.02, dropPos.y);
+
+    this.placedItems.placeItemAt(item, dropPos);
+    this.guideUI.showToast(`Đã vứt ${item.name} về phía tâm ngắm`);
+  }
+
   handleWorldInteract(object, hit) {
     const held = this.heldItemManager.getHeldItem();
     const uData = object?.userData || {};
@@ -195,14 +216,13 @@ export class Game {
           hit.face ? hit.face.normal : new THREE.Vector3(0, 1, 0)
         );
         this.heldItemManager.clearHeldItem();
-        this.inventoryUI.setItemState(held.id, 'shelf');
         this.guideUI.showToast(`Đã đặt ${held.name} xuống vị trí nhắm`);
         return;
       }
     }
 
     // ==========================================
-    // CASE B: PLAYER'S HAND IS EMPTY
+    // CASE B: PLAYER'S HAND IS EMPTY (OR SWAPPING)
     // ==========================================
 
     // 1. Clicked an item placed on a table/floor/shelf
@@ -210,8 +230,11 @@ export class Game {
       const item = HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
         this.placedItems.removeItem(item.id);
+        const prevHeld = this.heldItemManager.getHeldItem();
+        if (prevHeld) {
+          this.inventoryUI.addItem(prevHeld);
+        }
         this.heldItemManager.holdItem(item);
-        this.inventoryUI.setItemState(item.id, 'held');
         this.guideUI.showToast(`Đã nhặt lại: ${item.name}`);
       }
       return;
@@ -222,8 +245,11 @@ export class Game {
       const item = HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
         this.shelf.hideItem(item.id);
+        const prevHeld = this.heldItemManager.getHeldItem();
+        if (prevHeld) {
+          this.inventoryUI.addItem(prevHeld);
+        }
         this.heldItemManager.holdItem(item);
-        this.inventoryUI.setItemState(item.id, 'held');
         this.guideUI.showToast(`Đã nhặt: ${item.name}`);
       }
       return;
@@ -243,7 +269,7 @@ export class Game {
     // 4. Clicked snap zone with empty hand: check if user has item in inventory to quick-install
     if (uData.snapType) {
       const matchingItem = HARDWARE_ITEMS.find(it => it.categoryKey === uData.snapType);
-      if (matchingItem) {
+      if (matchingItem && this.inventoryUI.hasItem(matchingItem.id)) {
         this.tryInstallComponent(uData.snapType, matchingItem.id);
       }
       return;
@@ -287,7 +313,7 @@ export class Game {
     const success = this.caseAssembly.installComponent(categoryKey);
     if (success) {
       if (itemId) {
-        this.inventoryUI.setItemState(itemId, 'installed');
+        this.inventoryUI.removeItem(itemId);
         this.shelf.hideItem(itemId);
         this.placedItems.removeItem(itemId);
       }
@@ -298,12 +324,25 @@ export class Game {
   }
 
   handleStowItem() {
+    // If inventory is open: E drops selected item
+    if (this.inventoryUI.isOpen) {
+      if (this.inventoryUI.selectedItem) {
+        this.inventoryUI.dropCurrentSelectedItem();
+      }
+      return;
+    }
+
+    // If inventory is closed: E stows the currently held item into an empty slot!
     const held = this.heldItemManager.getHeldItem();
     if (held) {
-      sounds.playDrop();
-      this.heldItemManager.clearHeldItem();
-      this.inventoryUI.setItemState(held.id, 'inventory');
-      this.guideUI.showToast(`Đã cất ${held.name} vào Túi đồ (Phím R)`);
+      const added = this.inventoryUI.addItem(held);
+      if (added) {
+        this.heldItemManager.clearHeldItem();
+        sounds.playDrop();
+        this.guideUI.showToast(`Đã cất ${held.name} vào Túi đồ (Phím R)`);
+      } else {
+        this.guideUI.showToast('⚠️ Túi đồ đã đầy (24/24 ô)!');
+      }
     }
   }
 
@@ -341,7 +380,7 @@ export class Game {
     this.caseAssembly.update(delta);
     this.room.update(delta);
 
-    if (this.inventoryUI.isOpen) {
+    if (this.inventoryUI.isOpen && this.inventoryUI.selectedItem) {
       this.previewScene.render();
     }
 
