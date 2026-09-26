@@ -50,9 +50,7 @@ export const HARDWARE_ITEMS = [
       { label: 'LED RGB', value: 'ASUS Aura Sync RGB Header' }
     ],
     description: 'Bo mạch chủ chuẩn Gaming cao cấp trang bị tản nhiệt VRM dày bản, tích hợp Wi-Fi AC và âm thanh SupremeFX S1220A chuyên nghiệp.',
-    beginnerTip: '💡 Bo mạch chủ là nền móng kết nối tất cả linh kiện. Lắp CPU, RAM và SSD M.2 lên bo mạch chủ trước khi gắn vào thùng case để dễ thao tác nhất!',
-    assemblyStep: 2,
-    installedCasePartName: 'MotherBoard'
+    beginnerTip: '💡 Bo mạch chủ là nền móng kết nối tất cả linh kiện. Lắp CPU, RAM và SSD M.2 lên bo mạch chủ trước khi gắn vào thùng case để dễ thao tác nhất!'
   },
   {
     id: 'cpu_ryzen_3600',
@@ -85,9 +83,7 @@ export const HARDWARE_ITEMS = [
       { label: 'Hỗ trợ RAM', value: 'DDR4 Dual-Channel lên tới 3200MHz' }
     ],
     description: 'Bộ vi xử lý quốc dân với hiệu năng đa nhân vượt trội, cân bằng hoàn hảo giữa chơi game eSports và làm việc đồ họa mượt mà.',
-    beginnerTip: '💡 Khi lắp CPU, hãy tìm biểu tượng tam giác vàng ở góc con chip và căn trùng khớp với dấu tam giác trên socket. Nhẹ nhàng đặt xuống, tuyệt đối không dùng lực đè mạnh!',
-    assemblyStep: 3,
-    installedCasePartName: 'CPU'
+    beginnerTip: '💡 Khi lắp CPU, hãy tìm biểu tượng tam giác vàng ở góc con chip và căn trùng khớp với dấu tam giác trên socket. Nhẹ nhàng đặt xuống, tuyệt đối không dùng lực đè mạnh!'
   },
   {
     id: 'cooler_master_212',
@@ -118,9 +114,7 @@ export const HARDWARE_ITEMS = [
       { label: 'Socket tương thích', value: 'Intel LGA 1700/1200/115x & AMD AM4/AM5' }
     ],
     description: 'Giải pháp làm mát khí kinh điển với các lá tản nhiệt nhôm mạ niken tối ưu khí động học và cụm tiếp xúc 4 ống đồng nguyên chất.',
-    beginnerTip: '💡 Đừng quên bôi một lượng keo tản nhiệt (cỡ hạt đậu) lên giữa nắp lưng CPU trước khi siết ốc tản nhiệt để truyền nhiệt tốt nhất!',
-    assemblyStep: 4,
-    installedCasePartName: 'Radiator'
+    beginnerTip: '💡 Đừng quên bôi một lượng keo tản nhiệt (cỡ hạt đậu) lên giữa nắp lưng CPU trước khi siết ốc tản nhiệt để truyền nhiệt tốt nhất!'
   },
   {
     id: 'ram_gskill_tridentz_16gb',
@@ -160,9 +154,7 @@ export const HARDWARE_ITEMS = [
       { label: 'Chất liệu tản nhiệt', value: 'Hợp kim nhôm xước hairline cao cấp' }
     ],
     description: 'Thanh RAM cao cấp hàng đầu thế giới với dải LED RGB cầu vồng sống động cùng IC được tuyển chọn kỹ lưỡng cho khả năng ép xung tối đa.',
-    beginnerTip: '💡 Khi cắm 2 thanh RAM trên bo mạch chủ có 4 khe, hãy cắm vào khe 2 và khe 4 (khe DIMM A2 & B2) để kích hoạt chế độ Kênh Đôi (Dual-Channel) giúp tăng gấp đôi băng thông nhớ!',
-    assemblyStep: 5,
-    installedCasePartName: 'RAM'
+    beginnerTip: '💡 Khi cắm 2 thanh RAM trên bo mạch chủ có 4 khe, hãy cắm vào khe 2 và khe 4 (khe DIMM A2 & B2) để kích hoạt chế độ Kênh Đôi (Dual-Channel) giúp tăng gấp đôi băng thông nhớ!'
   },
   {
     id: 'ssd_samsung_860',
@@ -193,9 +185,7 @@ export const HARDWARE_ITEMS = [
       { label: 'Độ bền ghi (TBW)', value: '300 TBW (Bảo hành 5 năm)' }
     ],
     description: 'Ổ cứng SSD thể rắn huyền thoại từ Samsung đem lại độ bền bỉ phi thường, khởi động hệ điều hành và tải ứng dụng chỉ trong chớp mắt.',
-    beginnerTip: '💡 Ổ cứng SSD không có bộ phận chuyển động cơ học nên chống sốc cực tốt và hoàn toàn im lặng. Kết nối cáp dữ liệu SATA từ ổ cứng vào bo mạch chủ và cáp nguồn từ PSU!',
-    assemblyStep: 6,
-    installedCasePartName: 'SSD'
+    beginnerTip: '💡 Ổ cứng SSD không có bộ phận chuyển động cơ học nên chống sốc cực tốt và hoàn toàn im lặng. Kết nối cáp dữ liệu SATA từ ổ cứng vào bo mạch chủ và cáp nguồn từ PSU!'
   },
   {
     id: 'psu_aerocool_650w',
@@ -226,9 +216,7 @@ export const HARDWARE_ITEMS = [
       { label: 'Đường điện 12V', value: 'Single Rail 12V 54A công suất tối đa' }
     ],
     description: 'Trái tim cấp năng lượng bền bỉ cho toàn bộ dàn máy với tụ điện thể rắn cao cấp chịu nhiệt 105°C và đường 12V Single Rail công suất cao.',
-    beginnerTip: '💡 Luôn lắp nguồn với quạt hút hướng xuống lưới lọc bụi dưới đáy thùng máy để hút không khí mát từ bên ngoài phòng vào làm mát linh kiện nguồn!',
-    assemblyStep: 7,
-    installedCasePartName: 'PSU'
+    beginnerTip: '💡 Luôn lắp nguồn với quạt hút hướng xuống lưới lọc bụi dưới đáy thùng máy để hút không khí mát từ bên ngoài phòng vào làm mát linh kiện nguồn!'
   },
   {
     id: 'gpu_rtx_3090',
@@ -262,119 +250,6 @@ export const HARDWARE_ITEMS = [
       { label: 'Cổng xuất hình', value: '1x HDMI 2.1, 3x DisplayPort 1.4a' }
     ],
     description: 'Quái thú đồ họa (BFGPU) đỉnh cao nhất thế giới cho phép trải nghiệm game mượt mà ở độ phân giải 8K HDR và dựng hình 3D, Render video chuyên nghiệp.',
-    beginnerTip: '💡 Card đồ họa rất nặng và tiêu thụ nhiều điện. Hãy lắp vào khe PCIe x16 trên cùng gần CPU nhất để đạt tốc độ tối đa, siết chặt ốc giữ ở thành case và cắm đủ nguồn 8-Pin PCIe!',
-    assemblyStep: 8,
-    installedCasePartName: 'RTX2080ti'
-  }
-];
-
-export const ASSEMBLY_STEPS = [
-  {
-    step: 1,
-    title: 'Mở nắp kính thùng máy tính',
-    shortName: 'Mở nắp kính',
-    target: 'case_glass',
-    icon: 'wrench',
-    instruction: 'Nhấn chuột trái vào nắp kính cường lực (Side Glass) ở mặt bên thùng máy để tháo ra, sẵn sàng cho việc lắp linh kiện.',
-    tip: 'Trong thực tế, hãy vặn 4 ốc núm cao su ở 4 góc kính cẩn thận và đặt kính lên nơi êm mềm để tránh trầy xước!'
-  },
-  {
-    step: 2,
-    title: 'Lắp đặt Bo mạch chủ (Motherboard)',
-    shortName: 'Lắp Bo mạch chủ',
-    target: 'mb_asus_z370',
-    icon: 'cpu',
-    instruction: 'Lấy Bo mạch chủ ASUS ROG STRIX từ kệ sắt hoặc túi đồ (R) và đặt vào đúng vị trí ốc chân đồng (standoffs) trong case.',
-    tip: 'Căn khớp mặt cổng I/O phía sau với miếng chặn main và siết các ốc vít theo thứ tự đối xứng.'
-  },
-  {
-    step: 3,
-    title: 'Lắp Bộ vi xử lý (CPU AMD Ryzen)',
-    shortName: 'Lắp CPU',
-    target: 'cpu_ryzen_3600',
-    icon: 'zap',
-    instruction: 'Mở cần gạt socket CPU, căn đúng góc tam giác vàng và đặt CPU Ryzen vào socket, sau đó gạt cần khóa ngàm lại.',
-    tip: 'Không dùng sức ấn mạnh. Khi đúng chiều, chip CPU sẽ tự động trượt êm ái vào các lỗ socket.'
-  },
-  {
-    step: 4,
-    title: 'Lắp Tản nhiệt CPU (Cooler Master)',
-    shortName: 'Lắp Tản nhiệt CPU',
-    target: 'cooler_master_212',
-    icon: 'wind',
-    instruction: 'Bôi keo tản nhiệt lên lưng CPU và gắn tháp tản nhiệt Cooler Master lên socket, siết ốc đối xứng và cắm dây fan CPU.',
-    tip: 'Siết ốc theo hình chữ X (chéo góc) từng vòng một để lực ép keo tản nhiệt trải đều trên bề mặt chip.'
-  },
-  {
-    step: 5,
-    title: 'Cắm thanh RAM G.SKILL Trident Z RGB',
-    shortName: 'Cắm RAM',
-    target: 'ram_gskill_tridentz_16gb',
-    icon: 'layers',
-    instruction: 'Mở lẫy 2 đầu khe RAM, căn rãnh khuyết ở chân cắm và ấn đều 2 đầu thanh RAM cho đến khi lẫy tự động gài kêu tách.',
-    tip: 'Cắm vào khe DIMM 2 & 4 để chạy Dual Channel tối ưu hiệu năng băng thông.'
-  },
-  {
-    step: 6,
-    title: 'Lắp Ổ cứng thể rắn SSD Samsung',
-    shortName: 'Lắp Ổ SSD',
-    target: 'ssd_samsung_860',
-    icon: 'hard-drive',
-    instruction: 'Gắn ổ cứng SSD Samsung vào khay ổ cứng và siết ốc cố định.',
-    tip: 'SSD thể rắn giúp máy tính khởi động Windows trong vòng 5 giây và mở phần mềm cực nhanh.'
-  },
-  {
-    step: 7,
-    title: 'Lắp Bộ nguồn máy tính (PSU)',
-    shortName: 'Lắp Nguồn PSU',
-    target: 'psu_aerocool_650w',
-    icon: 'battery-charging',
-    instruction: 'Đưa bộ nguồn vào khoang hộc đáy thùng case, quạt hướng xuống dưới và bắt 4 ốc ở mặt sau.',
-    tip: 'Bộ nguồn đóng vai trò chuyển điện xoay chiều 220V thành các dòng điện 12V, 5V, 3.3V cho toàn bộ hệ thống.'
-  },
-  {
-    step: 8,
-    title: 'Lắp Card màn hình rời (NVIDIA RTX 3090)',
-    shortName: 'Lắp Card GPU',
-    target: 'gpu_rtx_3090',
-    icon: 'tv',
-    instruction: 'Cắm card RTX 3090 vào khe PCIe x16 đầu tiên trên mainboard, gạt lẫy khóa và siết ốc giữ vào khung case.',
-    tip: 'RTX 3090 là card đồ họa đầu bảng, cần cắm đủ 2 đầu nguồn phụ 8-Pin PCIe để hoạt động ổn định.'
-  },
-  {
-    step: 9,
-    title: 'Cắm hệ thống Dây nguồn & Cáp tín hiệu',
-    shortName: 'Cắm Dây cáp',
-    target: 'cables_connected',
-    icon: 'git-merge',
-    instruction: 'Nhấn vào các đầu dây để cắm dây 24-Pin ATX Mainboard, 8-Pin CPU EPS, dây PCIe GPU và dây Power Switch.',
-    tip: 'Dây cáp máy tính đều có ngàm chống cắm ngược, nếu thấy cắm vào bị cấn hãy kiểm tra lại chiều đầu cắm.'
-  },
-  {
-    step: 10,
-    title: 'Đóng nắp kính cường lực thùng máy',
-    shortName: 'Đóng nắp kính',
-    target: 'case_glass_close',
-    icon: 'shield',
-    instruction: 'Lắp lại nắp kính cường lực vào mặt bên case để bảo vệ linh kiện và hoàn thiện tính thẩm mỹ.',
-    tip: 'Thùng máy kín giúp luồng gió thổi từ quạt trước ra quạt sau tạo áp suất làm mát tối ưu.'
-  },
-  {
-    step: 11,
-    title: 'Cắm Dây màn hình & Nguồn điện máy tính',
-    shortName: 'Kết nối Màn hình & Điện',
-    target: 'power_plug',
-    icon: 'monitor',
-    instruction: 'Cắm dây DisplayPort / HDMI từ card RTX 3090 lên Màn hình máy tính và cắm dây nguồn AC vào ổ điện.',
-    tip: '⚠️ Lưu ý vàng cho người mới: Phải cắm dây màn hình vào Card đồ họa (GPU) ở dưới, KHÔNG cắm vào cổng trên mainboard!'
-  },
-  {
-    step: 12,
-    title: 'BẬT NGUỒN & KHỞI ĐỘNG HỆ THỐNG!',
-    shortName: 'Bật nguồn & Test máy',
-    target: 'power_button',
-    icon: 'power',
-    instruction: 'Nhấn nút Power ở mặt trên thùng máy! Chiêm ngưỡng quạt tản nhiệt quay, đèn RGB sáng rực và màn hình boot BIOS!',
-    tip: 'Quy trình POST (Power-On Self Test) sẽ kiểm tra RAM, CPU, VGA. Khi tiếng beep ngắn vang lên tức là máy tính đã lắp ráp hoàn hảo!'
+    beginnerTip: '💡 Card đồ họa rất nặng và tiêu thụ nhiều điện. Hãy lắp vào khe PCIe x16 trên cùng gần CPU nhất để đạt tốc độ tối đa, siết chặt ốc giữ ở thành case và cắm đủ nguồn 8-Pin PCIe!'
   }
 ];

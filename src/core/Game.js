@@ -1,13 +1,11 @@
 import * as THREE from 'three';
 import { Room } from '../scene/Room.js';
-import { CaseAssembly } from '../scene/CaseAssembly.js';
 import { ShelfHardware } from '../scene/ShelfHardware.js';
 import { PlacedItemManager } from '../scene/PlacedItemManager.js';
 import { ItemPreviewScene } from '../scene/ItemPreviewScene.js';
 import { HeldItemManager } from '../controls/HeldItemManager.js';
 import { PlayerControls } from '../controls/PlayerControls.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
-import { AssemblyGuideUI } from '../ui/AssemblyGuideUI.js';
 import { HARDWARE_ITEMS } from '../data/hardware.js';
 import { sounds } from '../audio/SoundEffects.js';
 
@@ -24,16 +22,8 @@ export class Game {
     const previewCanvas = document.getElementById('item-preview-canvas');
     this.previewScene = new ItemPreviewScene(previewCanvas);
 
-    // Assembly Tracker Guide UI
-    this.guideUI = new AssemblyGuideUI();
-
     // Scene elements
     this.room = new Room(this.scene);
-
-    this.caseAssembly = new CaseAssembly(this.scene, (step, target) => {
-      this.handleStepCompleted(step, target);
-    });
-
     this.shelf = new ShelfHardware(this.scene);
     this.placedItems = new PlacedItemManager(this.scene);
 
@@ -53,10 +43,8 @@ export class Game {
         }
         this.heldItemManager.holdItem(item);
       },
-      // onInstallItem
-      item => {
-        this.tryInstallComponent(item.categoryKey, item.id);
-      },
+      // onInstallItem (deprecated/no-op now)
+      item => {},
       // onDropItem (Drop from inventory to crosshair via E key or button)
       item => {
         this.dropItemAtCrosshair(item);
@@ -92,22 +80,12 @@ export class Game {
     this.controls.pitch = -0.2;
     this.controls.yaw = 0;
 
-    // Load main PC Case model
-    this.caseAssembly.loadModel(
-      progress => {
-        const loadBar = document.getElementById('loading-bar-fill');
-        const loadText = document.getElementById('loading-text');
-        if (loadBar) loadBar.style.width = `${Math.round(progress * 100)}%`;
-        if (loadText) loadText.textContent = `Đang tải tài nguyên mô hình 3D... ${Math.round(progress * 100)}%`;
-      },
-      () => {
-        const loaderScreen = document.getElementById('loading-screen');
-        if (loaderScreen) {
-          loaderScreen.classList.add('hidden');
-          setTimeout(() => loaderScreen.remove(), 600);
-        }
-      }
-    );
+    // Hide loading screen immediately
+    const loaderScreen = document.getElementById('loading-screen');
+    if (loaderScreen) {
+      loaderScreen.classList.add('hidden');
+      setTimeout(() => loaderScreen.remove(), 600);
+    }
 
     this.setupWindowEvents();
     this.animate();
@@ -186,7 +164,6 @@ export class Game {
     dropPos.y = Math.max(0.02, dropPos.y);
 
     this.placedItems.placeItemAt(item, dropPos);
-    this.guideUI.showToast(`Đã vứt ${item.name} về phía tâm ngắm`);
   }
 
   handleWorldInteract(object, hit) {
@@ -197,18 +174,7 @@ export class Game {
     // CASE A: PLAYER IS HOLDING AN ITEM
     // ==========================================
     if (held) {
-      // 1. If aiming at an assembly slot or case target: try install
-      if (uData.snapType) {
-        if (held.categoryKey === uData.snapType) {
-          this.tryInstallComponent(uData.snapType, held.id);
-          this.heldItemManager.clearHeldItem();
-        } else {
-          this.guideUI.showToast(`⚠️ Cần lắp ${uData.snapType.toUpperCase()}, bạn đang cầm ${held.tag}!`);
-        }
-        return;
-      }
-
-      // 2. Otherwise: Left Click drops/places the held item at crosshair intersection point
+      // Left Click drops/places the held item at crosshair intersection point
       if (hit && hit.point) {
         this.placedItems.placeItemAt(
           held,
@@ -216,7 +182,6 @@ export class Game {
           hit.face ? hit.face.normal : new THREE.Vector3(0, 1, 0)
         );
         this.heldItemManager.clearHeldItem();
-        this.guideUI.showToast(`Đã đặt ${held.name} xuống vị trí nhắm`);
         return;
       }
     }
@@ -235,7 +200,6 @@ export class Game {
           this.inventoryUI.addItem(prevHeld);
         }
         this.heldItemManager.holdItem(item);
-        this.guideUI.showToast(`Đã nhặt lại: ${item.name}`);
       }
       return;
     }
@@ -250,77 +214,9 @@ export class Game {
           this.inventoryUI.addItem(prevHeld);
         }
         this.heldItemManager.holdItem(item);
-        this.guideUI.showToast(`Đã nhặt: ${item.name}`);
       }
       return;
     }
-
-    // 3. Clicked Case Side Glass
-    if (uData.type === 'glass_side') {
-      const isOpen = this.caseAssembly.toggleSideGlass();
-      if (isOpen) {
-        this.guideUI.completeStep(1);
-      } else {
-        this.guideUI.completeStep(10);
-      }
-      return;
-    }
-
-    // 4. Clicked snap zone with empty hand: check if user has item in inventory to quick-install
-    if (uData.snapType) {
-      const matchingItem = HARDWARE_ITEMS.find(it => it.categoryKey === uData.snapType);
-      if (matchingItem && this.inventoryUI.hasItem(matchingItem.id)) {
-        this.tryInstallComponent(uData.snapType, matchingItem.id);
-      }
-      return;
-    }
-
-    // 5. Clicked Cables
-    if (uData.type === 'cables') {
-      this.caseAssembly.connectCables();
-      return;
-    }
-
-    // 6. Clicked Monitor / Video Cable
-    if (uData.type === 'monitor') {
-      this.caseAssembly.connectMonitorAndPower();
-      this.room.setMonitorState('NO_SIGNAL');
-      this.guideUI.completeStep(11);
-      return;
-    }
-
-    // 7. Clicked Power Button
-    if (uData.type === 'power_button') {
-      if (this.caseAssembly.installedParts.size < 6) {
-        this.guideUI.showToast('⚠️ Chưa lắp đủ linh kiện thiết yếu (Main, CPU, Cooler, RAM, GPU, PSU)!');
-        return;
-      }
-      if (!this.caseAssembly.monitorConnected) {
-        this.caseAssembly.connectMonitorAndPower();
-        this.guideUI.completeStep(11);
-      }
-      const success = this.caseAssembly.powerOnSystem();
-      if (success) {
-        setTimeout(() => {
-          this.room.setMonitorState('POST');
-        }, 800);
-      }
-      return;
-    }
-  }
-
-  tryInstallComponent(categoryKey, itemId) {
-    const success = this.caseAssembly.installComponent(categoryKey);
-    if (success) {
-      if (itemId) {
-        this.inventoryUI.removeItem(itemId);
-        this.shelf.hideItem(itemId);
-        this.placedItems.removeItem(itemId);
-      }
-      const item = HARDWARE_ITEMS.find(it => it.id === itemId || it.categoryKey === categoryKey);
-      this.guideUI.showToast(`Đã lắp thành công: ${item?.name || categoryKey.toUpperCase()}`);
-    }
-    return success;
   }
 
   handleStowItem() {
@@ -339,15 +235,8 @@ export class Game {
       if (added) {
         this.heldItemManager.clearHeldItem();
         sounds.playDrop();
-        this.guideUI.showToast(`Đã cất ${held.name} vào Túi đồ (Phím R)`);
-      } else {
-        this.guideUI.showToast('⚠️ Túi đồ đã đầy (24/24 ô)!');
       }
     }
-  }
-
-  handleStepCompleted(stepNumber, target) {
-    this.guideUI.completeStep(stepNumber);
   }
 
   setupWindowEvents() {
@@ -366,7 +255,6 @@ export class Game {
 
     // Interactable list including dropped/placed items
     const interactables = [
-      ...this.caseAssembly.interactableObjects,
       ...this.shelf.interactables,
       ...this.placedItems.interactables,
       ...this.room.interactables
@@ -377,7 +265,6 @@ export class Game {
 
     this.controls.update(delta, interactables, surfaces);
     this.heldItemManager.update(delta, time);
-    this.caseAssembly.update(delta);
     this.room.update(delta);
 
     if (this.inventoryUI.isOpen && this.inventoryUI.selectedItem) {
