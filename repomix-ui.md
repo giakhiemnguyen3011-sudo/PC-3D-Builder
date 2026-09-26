@@ -1,3 +1,490 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/ui/**/*, src/style.css
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  ui/
+    AssemblyGuideUI.js
+    InventoryUI.js
+  style.css
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/ui/AssemblyGuideUI.js">
+import { ASSEMBLY_STEPS } from '../data/hardware.js';
+import confetti from 'canvas-confetti';
+
+export class AssemblyGuideUI {
+  constructor() {
+    this.steps = ASSEMBLY_STEPS;
+    this.currentStepIndex = 0; // 0-indexed (Step 1 is index 0)
+    this.completedSteps = new Set();
+    this.isExpanded = false;
+
+    this.hudContainer = document.getElementById('assembly-hud');
+    this.setupDOM();
+    this.render();
+  }
+
+  setupDOM() {
+    const toggleBtn = document.getElementById('btn-toggle-steps');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        this.isExpanded = !this.isExpanded;
+        const listEl = document.getElementById('steps-list');
+        if (listEl) {
+          listEl.style.display = this.isExpanded ? 'block' : 'none';
+        }
+        toggleBtn.textContent = this.isExpanded ? '▲ Thu gọn' : '▼ Xem 12 bước chuẩn';
+      });
+    }
+  }
+
+  render() {
+    const step = this.steps[this.currentStepIndex] || this.steps[this.steps.length - 1];
+
+    // Current step badge
+    const badgeEl = document.getElementById('current-step-badge');
+    if (badgeEl) {
+      badgeEl.textContent = `BƯỚC ${step.step} / ${this.steps.length}`;
+    }
+
+    // Title
+    const titleEl = document.getElementById('current-step-title');
+    if (titleEl) {
+      titleEl.textContent = step.title;
+    }
+
+    // Instruction
+    const descEl = document.getElementById('current-step-desc');
+    if (descEl) {
+      descEl.textContent = step.instruction;
+    }
+
+    // Pro tip
+    const tipEl = document.getElementById('current-step-tip');
+    if (tipEl) {
+      tipEl.innerHTML = `<strong>💡 Mẹo thực tế:</strong> ${step.tip}`;
+    }
+
+    // Progress bar
+    const progressEl = document.getElementById('assembly-progress-fill');
+    if (progressEl) {
+      const pct = (this.completedSteps.size / this.steps.length) * 100;
+      progressEl.style.width = `${pct}%`;
+    }
+
+    // Steps checklist
+    const listEl = document.getElementById('steps-list');
+    if (listEl) {
+      listEl.innerHTML = '';
+      this.steps.forEach((s, idx) => {
+        const item = document.createElement('div');
+        const isDone = this.completedSteps.has(s.step);
+        const isCurrent = idx === this.currentStepIndex;
+
+        item.className = `step-item ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`;
+        item.innerHTML = `
+          <div class="step-num">${isDone ? '✓' : s.step}</div>
+          <div class="step-text">
+            <div class="step-name">${s.shortName}</div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+  }
+
+  completeStep(stepNumber) {
+    this.completedSteps.add(stepNumber);
+
+    // Show toast
+    this.showToast(`Hoàn thành Bước ${stepNumber}: ${this.steps[stepNumber - 1]?.shortName || ''}!`);
+
+    // Advance to next uncompleted step
+    if (stepNumber >= this.currentStepIndex + 1) {
+      this.currentStepIndex = Math.min(stepNumber, this.steps.length - 1);
+    }
+
+    this.render();
+
+    // If final step completed: celebration!
+    if (stepNumber === 12) {
+      this.celebrate();
+    }
+  }
+
+  showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'hud-toast';
+    toast.innerHTML = `
+      <div class="toast-icon">✨</div>
+      <div class="toast-msg">${message}</div>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 400);
+    }, 3000);
+  }
+
+  celebrate() {
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.6 }
+    });
+
+    setTimeout(() => {
+      confetti({
+        particleCount: 80,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 }
+      });
+      confetti({
+        particleCount: 80,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 }
+      });
+    }, 400);
+  }
+}
+</file>
+
+<file path="src/ui/InventoryUI.js">
+import { HARDWARE_ITEMS, HARDWARE_CATEGORIES } from '../data/hardware.js';
+import { sounds } from '../audio/SoundEffects.js';
+
+export class InventoryUI {
+  constructor(previewScene, onEquipItem, onInstallItem, onDropItem, onRequestLock) {
+    this.previewScene = previewScene;
+    this.onEquipItem = onEquipItem;
+    this.onInstallItem = onInstallItem;
+    this.onDropItem = onDropItem;
+    this.onRequestLock = onRequestLock;
+
+    this.isOpen = false;
+    this.maxSlots = 24; // 24 square slots
+    this.slots = new Array(this.maxSlots).fill(null);
+    this.selectedSlotIndex = null;
+    this.selectedItem = null;
+
+    // Initial state: first 4 items in inventory slots, others on shelf
+    HARDWARE_ITEMS.forEach((item, idx) => {
+      if (idx < 4) {
+        this.slots[idx] = item;
+      }
+    });
+
+    this.modalEl = document.getElementById('inventory-modal');
+    this.setupDOM();
+  }
+
+  setupDOM() {
+    // Close button
+    const closeBtn = document.getElementById('btn-close-inventory');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        sounds.playClick();
+        this.close();
+      });
+    }
+
+    // Action button: Equip (Cầm trên tay)
+    const btnEquip = document.getElementById('btn-inv-equip');
+    if (btnEquip) {
+      btnEquip.addEventListener('click', () => {
+        if (!this.selectedItem) return;
+        sounds.playClick();
+        const itemToEquip = this.selectedItem;
+        const slotIdx = this.selectedSlotIndex;
+
+        // Clear from inventory slot and equip
+        this.slots[slotIdx] = null;
+        this.deselect();
+        this.renderGrid();
+
+        if (this.onEquipItem) this.onEquipItem(itemToEquip);
+        this.close();
+      });
+    }
+
+    // Action button: Drop / Vứt ra ngoài (Phím E)
+    const btnDrop = document.getElementById('btn-inv-drop');
+    if (btnDrop) {
+      btnDrop.addEventListener('click', () => {
+        this.dropCurrentSelectedItem();
+      });
+    }
+
+    // Keyboard listener for E key inside inventory
+    window.addEventListener('keydown', e => {
+      if (!this.isOpen) return;
+
+      // ESC or R to close
+      if (e.code === 'KeyR' || e.code === 'Escape') {
+        e.preventDefault();
+        sounds.playClick();
+        this.close();
+        return;
+      }
+
+      // E key while a slot is selected: Drop item to crosshair
+      if (e.code === 'KeyE') {
+        if (this.selectedItem && this.selectedSlotIndex !== null) {
+          e.preventDefault();
+          this.dropCurrentSelectedItem();
+        }
+      }
+    });
+  }
+
+  dropCurrentSelectedItem() {
+    if (!this.selectedItem || this.selectedSlotIndex === null) return;
+    sounds.playDrop();
+
+    const itemToDrop = this.selectedItem;
+    const slotIdx = this.selectedSlotIndex;
+
+    // Vacate the slot
+    this.slots[slotIdx] = null;
+    this.deselect();
+    this.renderGrid();
+
+    // Call drop callback to spawn in 3D world at crosshair
+    if (this.onDropItem) {
+      this.onDropItem(itemToDrop);
+    }
+  }
+
+  open(heldItem = null) {
+    this.isOpen = true;
+    sounds.playClick();
+    this.modalEl.classList.add('active');
+
+    // Deselect any previous selection when opening fresh
+    this.deselect();
+    this.renderGrid();
+  }
+
+  close() {
+    this.isOpen = false;
+    this.modalEl.classList.remove('active');
+    this.deselect();
+    if (this.onRequestLock) {
+      this.onRequestLock();
+    }
+  }
+
+  toggle(heldItem = null) {
+    if (this.isOpen) {
+      this.close();
+    } else {
+      this.open(heldItem);
+    }
+  }
+
+  selectSlot(index) {
+    const item = this.slots[index];
+    if (!item) return;
+
+    sounds.playClick();
+
+    // If clicking already selected slot: DESELECT
+    if (this.selectedSlotIndex === index) {
+      this.deselect();
+      this.renderGrid();
+      return;
+    }
+
+    // Otherwise SELECT this slot
+    this.selectedSlotIndex = index;
+    this.selectedItem = item;
+    this.renderGrid();
+    this.showDetailPanel(item);
+
+    if (this.previewScene) {
+      this.previewScene.loadItemModel(item.modelPath, item.baseRotation);
+    }
+  }
+
+  deselect() {
+    this.selectedSlotIndex = null;
+    this.selectedItem = null;
+    this.hideDetailPanel();
+  }
+
+  showDetailPanel(item) {
+    const emptyPanel = document.getElementById('inv-empty-detail');
+    const activePanel = document.getElementById('inv-active-detail');
+    if (emptyPanel) emptyPanel.style.display = 'none';
+    if (activePanel) activePanel.style.display = 'flex';
+
+    // Tag
+    const tagEl = document.getElementById('inv-item-tag');
+    if (tagEl) {
+      tagEl.textContent = `Tag: ${item.tag}`;
+      tagEl.className = `inv-tag tag-${item.categoryKey}`;
+    }
+
+    // Name & Brand
+    const nameEl = document.getElementById('inv-item-name');
+    if (nameEl) nameEl.textContent = item.name;
+
+    const brandEl = document.getElementById('inv-item-brand');
+    if (brandEl) brandEl.textContent = `${item.brand} • ${item.price}`;
+
+    // Specs list
+    const specsListEl = document.getElementById('inv-specs-list');
+    if (specsListEl) {
+      specsListEl.innerHTML = '';
+      item.specs.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'spec-row';
+        row.innerHTML = `
+          <span class="spec-label">${s.label}:</span>
+          <span class="spec-value">${s.value}</span>
+        `;
+        specsListEl.appendChild(row);
+      });
+    }
+
+    // Beginner Tip & Role
+    const tipEl = document.getElementById('inv-item-tip');
+    if (tipEl) tipEl.textContent = item.beginnerTip;
+  }
+
+  hideDetailPanel() {
+    const emptyPanel = document.getElementById('inv-empty-detail');
+    const activePanel = document.getElementById('inv-active-detail');
+    if (emptyPanel) emptyPanel.style.display = 'flex';
+    if (activePanel) activePanel.style.display = 'none';
+  }
+
+  renderGrid() {
+    const gridEl = document.getElementById('inventory-grid');
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
+
+    let occupiedCount = 0;
+
+    for (let i = 0; i < this.maxSlots; i++) {
+      const item = this.slots[i];
+      const isSelected = this.selectedSlotIndex === i;
+
+      const slot = document.createElement('div');
+      slot.className = `inv-slot ${item ? 'occupied' : 'empty'} ${isSelected ? 'selected' : ''}`;
+      slot.dataset.slotIndex = i;
+
+      if (item) {
+        occupiedCount++;
+        slot.innerHTML = `
+          <div class="slot-image-wrap">
+            ${item.iconSvg || '<div class="slot-emoji">📦</div>'}
+          </div>
+          <div class="slot-name-label">${item.name}</div>
+          <div class="slot-tag-badge">${item.tag}</div>
+        `;
+
+        slot.addEventListener('click', () => {
+          this.selectSlot(i);
+        });
+      } else {
+        // Empty slot box
+        slot.innerHTML = `
+          <div class="slot-empty-cross">+</div>
+          <div class="slot-empty-num">${i + 1}</div>
+        `;
+      }
+
+      gridEl.appendChild(slot);
+    }
+
+    // Update capacity badge
+    const capBadge = document.getElementById('inv-capacity-badge');
+    if (capBadge) {
+      capBadge.textContent = `${occupiedCount} / ${this.maxSlots} Ô CHỨA`;
+    }
+  }
+
+  addItem(item) {
+    const emptyIndex = this.slots.findIndex(s => s === null);
+    if (emptyIndex === -1) {
+      return false; // Inventory full
+    }
+    this.slots[emptyIndex] = item;
+    if (this.isOpen) {
+      this.renderGrid();
+    }
+    return true;
+  }
+
+  removeItem(itemId) {
+    const index = this.slots.findIndex(s => s && s.id === itemId);
+    if (index !== -1) {
+      this.slots[index] = null;
+      if (this.selectedSlotIndex === index) {
+        this.deselect();
+      }
+      if (this.isOpen) {
+        this.renderGrid();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  hasItem(itemId) {
+    return this.slots.some(s => s && s.id === itemId);
+  }
+}
+</file>
+
+<file path="src/style.css">
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
@@ -927,3 +1414,6 @@ body, html {
   color: #94a3b8;
   font-family: 'JetBrains Mono', monospace;
 }
+</file>
+
+</files>

@@ -6,7 +6,8 @@ export class ItemPreviewScene {
     this.canvas = canvas;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    this.camera.position.set(0, 0.3, 1.8);
+    this.camera.position.set(0, 0, 1.7);
+    this.camera.lookAt(0, 0, 0);
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -111,21 +112,6 @@ export class ItemPreviewScene {
   }
 
   setModel(model, baseRotation = null) {
-    // Normalize and center model
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const targetSize = 1.0;
-    const scale = targetSize / (maxDim || 1);
-    model.scale.set(scale, scale, scale);
-
-    // Center pivot
-    model.position.x = -center.x * scale;
-    model.position.y = -center.y * scale;
-    model.position.z = -center.z * scale;
-
     const baseWrapper = new THREE.Group();
     baseWrapper.add(model);
 
@@ -137,9 +123,26 @@ export class ItemPreviewScene {
       );
     }
 
-    // Wrap in outer pivot group for clean rotation
+    // Compute bounding box strictly AFTER applying baseRotation
+    baseWrapper.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(baseWrapper);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const targetSize = 0.95;
+    const scale = targetSize / (maxDim || 1);
+
+    // Shift baseWrapper so its true geometric center is at (0, 0, 0)
+    baseWrapper.position.set(-center.x, -center.y, -center.z);
+
+    const scaleGroup = new THREE.Group();
+    scaleGroup.add(baseWrapper);
+    scaleGroup.scale.set(scale, scale, scale);
+
+    // Outer pivot group for clean rotation around (0, 0, 0)
     const pivot = new THREE.Group();
-    pivot.add(baseWrapper);
+    pivot.add(scaleGroup);
     pivot.position.set(0, 0, 0);
 
     this.currentModel = pivot;

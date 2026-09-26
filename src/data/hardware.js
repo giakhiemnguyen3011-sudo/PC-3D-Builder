@@ -27,7 +27,7 @@ export const HARDWARE_ITEMS = [
     brand: 'ASUS Republic of Gamers',
     price: '4,890,000 đ',
     shelfPosition: { x: 3.2, y: 1.87, z: -0.8 },
-    scale: 0.85,
+    scale: 0.95,
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="6" width="52" height="52" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
@@ -64,7 +64,7 @@ export const HARDWARE_ITEMS = [
     brand: 'AMD',
     price: '3,290,000 đ',
     shelfPosition: { x: 3.2, y: 1.86, z: 0.1 },
-    scale: 1.8,
+    scale: 0.125,
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="10" width="44" height="44" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
@@ -99,7 +99,7 @@ export const HARDWARE_ITEMS = [
     brand: 'Cooler Master',
     price: '890,000 đ',
     shelfPosition: { x: 3.2, y: 1.86, z: 0.9 },
-    scale: 0.9,
+    scale: 0.50,
     baseRotation: { x: Math.PI / 2, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="10" width="36" height="38" rx="4" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
@@ -132,7 +132,7 @@ export const HARDWARE_ITEMS = [
     brand: 'G.SKILL',
     price: '1,750,000 đ',
     shelfPosition: { x: 3.2, y: 1.36, z: -0.8 },
-    scale: 1.4,
+    scale: 0.415,
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
@@ -174,7 +174,7 @@ export const HARDWARE_ITEMS = [
     brand: 'Samsung',
     price: '1,450,000 đ',
     shelfPosition: { x: 3.2, y: 1.36, z: 0.1 },
-    scale: 1.5,
+    scale: 0.3125,
     baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="12" y="10" width="40" height="44" rx="4" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
@@ -207,7 +207,7 @@ export const HARDWARE_ITEMS = [
     brand: 'Cooler Master / Aerocool',
     price: '1,590,000 đ',
     shelfPosition: { x: 3.2, y: 1.36, z: 0.9 },
-    scale: 1.0,
+    scale: 0.47,
     baseRotation: { x: 0, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="12" width="44" height="40" rx="4" fill="#0f172a" stroke="#f97316" stroke-width="2"/>
@@ -240,7 +240,7 @@ export const HARDWARE_ITEMS = [
     brand: 'NVIDIA',
     price: '34,900,000 đ',
     shelfPosition: { x: 3.2, y: 0.86, z: -0.4 },
-    scale: 1.0,
+    scale: 0.98,
     baseRotation: { x: 0, y: 0, z: 0 },
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="16" width="52" height="32" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
