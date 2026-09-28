@@ -1,0 +1,820 @@
+import * as THREE from 'three';
+import confetti from 'canvas-confetti';
+import { sounds } from '../audio/SoundEffects.js';
+import { BuildScene } from '../scene/BuildScene.js';
+import { ItemThumbnailBaker } from '../scene/ItemThumbnails.js';
+import { ASSEMBLY_STEPS, TOTAL_STEPS, stepAccepts } from '../data/assemblyPlan.js';
+import { CASE_ZONES } from '../scene/caseLayout.js';
+
+const POST_SEQUENCE = [
+  { at: 900, state: 'NO_SIGNAL', text: 'Chưa có tín hiệu — đang chờ cáp màn hình' },
+  { at: 2400, state: 'POST', text: 'POST: đang nhận diện CPU, RAM, ổ cứng' },
+  { at: 5600, state: 'OS', text: 'POST thành công — hệ thống đã khởi động' }
+];
+
+const FALLBACK_GLYPH = {
+  motherboard: '▦', cpu: '▣', cooler: '✳', ram: '▤',
+  gpu: '▭', storage: '▬', psu: '◫'
+};
+
+/**
+ * Build Mode: a guided 12-step assembly of the PC case.
+ *
+ * Hardware slots render real 3D model thumbnails, the selected part rides the
+ * cursor inside the Build Zone, and every step demands the right physical action
+ * (seat it, latch it, screw it down, route the cables) before the next unlocks.
+ */
+export class BuildModeUI {
+  constructor({ inventoryUI, room, onRequestLock, onAssembled }) {
+    this.inventoryUI = inventoryUI;
+    this.room = room;
+    this.onRequestLock = onRequestLock;
+    this.onAssembled = onAssembled;
+
+    this.isOpen = false;
+    this.completed = new Set();
+    this.currentStep = 1;
+    this.selectedItem = null;
+    this.pendingPress = null;   // part waiting to be latched down
+    this.pasteApplied = false;   // thermal paste on the CPU IHS
+    this.cableTargets = [];
+    this.postTimers = [];
+    this.isFinished = false;
+    this._v = new THREE.Vector3();
+
+    this.thumbnails = new ItemThumbnailBaker({ size: 144 });
+
+    this.dom = {
+      modal: document.getElementById('build-mode-modal'),
+      canvas: document.getElementById('build-case-canvas'),
+      close: document.getElementById('btn-close-build-mode'),
+      stepBadge: document.getElementById('build-step-badge'),
+      stepTitle: document.getElementById('build-step-title'),
+      stepDesc: document.getElementById('build-step-desc'),
+      stepTip: document.getElementById('build-step-tip'),
+      stepHint: document.getElementById('build-step-hint'),
+      progress: document.getElementById('build-progress-fill'),
+      checklist: document.getElementById('build-checklist'),
+      list: document.getElementById('build-slot-list'),
+      listEmpty: document.getElementById('build-slot-empty'),
+      glassBtn: document.getElementById('btn-toggle-glass'),
+      glassTag: document.getElementById('glass-status-tag'),
+      zoomTag: document.getElementById('build-zoom-tag'),
+      hint: document.getElementById('build-zone-hint'),
+      toast: document.getElementById('build-toast'),
+      actionBar: document.getElementById('build-action-bar'),
+      resetBtn: document.getElementById('btn-build-reset'),
+      finishBtn: document.getElementById('btn-build-finish')
+    };
+
+    this.scene = this.dom.canvas ? new BuildScene(this.dom.canvas) : null;
+    this.setupDOM();
+  }
+
+  // ------------------------------------------------------------------ DOM
+  setupDOM() {
+    const { close, glassBtn, resetBtn, finishBtn, canvas, modal } = this.dom;
+    if (!modal) return;
+
+    close?.addEventListener('click', () => this.close());
+    glassBtn?.addEventListener('click', () => this.toggleGlass());
+    resetBtn?.addEventListener('click', () => this.reset());
+    finishBtn?.addEventListener('click', () => this.finishBuild());
+
+    modal.addEventListener('click', e => {
+      if (e.target === modal) this.close();
+    });
+
+    window.addEventListener('keydown', e => {
+      if (this.isOpen && e.code === 'Escape') {
+        e.preventDefault();
+        this.close();
+      }
+    });
+
+    if (canvas) {
+      canvas.addEventListener('pointermove', e => this.onPointerMove(e));
+      canvas.addEventListener('pointerenter', e => this.onPointerMove(e));
+      canvas.addEventListener('pointerleave', () => this.onPointerLeave());
+      canvas.addEventListener('pointerdown', e => this.onPointerDown(e));
+      canvas.addEventListener('contextmenu', e => e.preventDefault());
+      // Scroll wheel zooms the Build Zone; the case itself stays locked
+      canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        if (!this.scene) return;
+        this.scene.zoomBy(e.deltaY / 100);
+        this.setZoomBadge();
+      }, { passive: false });
+    }
+  }
+
+  setZoomBadge() {
+    const el = this.dom.zoomTag;
+    if (!el || !this.scene) return;
+    el.textContent = `🔍 Thu phóng ${Math.round(this.scene.zoom * 100)}%`;
+  }
+
+  // ------------------------------------------------------------ lifecycle
+  open() {
+    if (!this.dom.modal) return;
+    this.dom.modal.classList.add('active');
+    this.isOpen = true;
+    sounds.playClick();
+    this.renderStep();
+    this.renderChecklist();
+    this.renderSlots();
+    if (this.scene) {
+      this.scene.resize();
+      this.scene.setFocusZone(this.activeStep()?.zone || null);
+      this.scene.snapCamera();
+      this.scene.setZoneState(this.activeStep()?.zone || null, 'active');
+    }
+    this.updateGlassUi();
+    this.warnIfHardwareMissing();
+  }
+
+  /** Tells the player exactly which part to go and fetch from the rack. */
+  warnIfHardwareMissing() {
+    const step = this.activeStep();
+    if (!step || !step.accepts.length) return;
+    const have = this.availableItems();
+    const missing = [];
+    for (const rule of step.accepts) {
+      const match = rule.startsWith('tag:')
+        ? have.find(i => (i.tag || '').toLowerCase() === rule.slice(4).toLowerCase())
+        : have.find(i => i.id === rule);
+      if (!match) missing.push(rule.startsWith('tag:') ? rule.slice(4) : rule);
+    }
+    if (missing.length) {
+      this.setToast(
+        `Bước ${step.step} cần ${missing.join(' / ')} — hãy nhặt từ kệ sắt và bỏ vào túi (phím E) trước đã.`,
+        'warn'
+      );
+    }
+  }
+
+  close() {
+    if (!this.dom.modal) return;
+    this.clearPostTimers();
+    this.dom.modal.classList.remove('active');
+    this.isOpen = false;
+    this.scene?.clearPointer();
+    this.scene?.clearGhost();
+    this.setZoneHint(null);
+    this.setToast(null);
+    this.onRequestLock?.();
+  }
+
+  reset() {
+    this.completed.clear();
+    this.currentStep = 1;
+    this.isFinished = false;
+    this.pendingPress = null;
+    this.pasteApplied = false;
+    this.cableTargets = [];
+    this.clearPostTimers();
+    if (this.scene) {
+      // take every installed part back out, otherwise a rebuild is impossible
+      this.returnPartsToBackpack();
+      this.scene.hideScrews();
+      this.scene.hideCableTargets();
+      this.scene.setPower(false);
+      this.scene.lockedZone = null;
+      // a fresh chassis arrives closed, exactly like one on the bench
+      this.scene.setGlass(true, true);
+      this.scene.setFocusZone(this.activeStep()?.zone || null);
+      this.scene.snapCamera();
+    }
+    this.selectedItem = null;
+    this.room.setMonitorState('OFF');
+    this.renderStep();
+    this.renderChecklist();
+    this.renderSlots();
+    this.updateGlassUi();
+    this.setToast('Đã đặt lại toàn bộ quy trình lắp ráp.', 'info');
+  }
+
+  /** Gives every part currently seated in the case back to the backpack. */
+  returnPartsToBackpack() {
+    if (!this.scene) return 0;
+    const items = [...this.scene.placedParts.values()].map(entry => entry.item);
+    items.forEach(item => this.inventoryUI.addItem(item));
+    this.scene.clearParts();
+    return items.length;
+  }
+
+  /**
+   * Bolt the glass back on and hand the finished machine to the world as one
+   * grouped object. Everything installed during the session travels with it.
+   */
+  finishBuild() {
+    if (!this.scene || this.isFinished) return null;
+    if (this.completed.size < TOTAL_STEPS) {
+      this.setToast(`Còn ${TOTAL_STEPS - this.completed.size} bước chưa hoàn thành.`, 'warn');
+      return null;
+    }
+    if (!this.scene.placedParts.size) {
+      this.setToast('Chưa có linh kiện nào nằm trong thùng.', 'warn');
+      return null;
+    }
+
+    sounds.playSnap();
+    const result = this.scene.finalize();
+    this.isFinished = true;
+    this.scene.clearZoneStates();
+
+    // drop the build-mode chrome: the machine now lives in the room
+    if (this.dom.finishBtn) this.dom.finishBtn.style.display = 'none';
+    if (this.dom.resetBtn) this.dom.resetBtn.style.display = 'none';
+    if (this.dom.glassBtn) this.dom.glassBtn.style.display = 'none';
+    this.setZoneHint(null);
+    this.setToast('Đã vặn nắp kính. Máy tính của bạn đã sẵn sàng!', 'ok');
+    this.renderStep();
+    this.renderActionBar();
+    this.close();
+    if (this.onAssembled) this.onAssembled(result);
+    return result;
+  }
+
+  // ----------------------------------------------------------- step logic
+  activeStep() {
+    return ASSEMBLY_STEPS.find(s => s.step === this.currentStep) || null;
+  }
+
+  isStepDone(stepNumber) {
+    return this.completed.has(stepNumber);
+  }
+
+  get allDone() {
+    return this.completed.size >= TOTAL_STEPS;
+  }
+
+  completeStep(stepNumber, message) {
+    if (this.completed.has(stepNumber)) return;
+    this.completed.add(stepNumber);
+    this.pendingPress = null;
+    this.pasteApplied = false;
+    sounds.playSnap();
+    this.setToast(message || `Hoàn thành bước ${stepNumber}.`, 'ok');
+    this.renderStep();
+    this.renderChecklist();
+    this.renderSlots();
+
+    if (this.completed.size >= TOTAL_STEPS) {
+      this.currentStep = TOTAL_STEPS;
+      this.onPowered();
+      return;
+    }
+    this.currentStep = Math.max(this.currentStep, stepNumber + 1);
+    if (stepNumber === 9) {
+      this.cableTargets = [];
+      this.scene?.hideCableTargets();
+    }
+    this.scene?.setFocusZone(this.activeStep()?.zone || null);
+    this.updateGhostItem();
+  }
+
+  /** Step 9: draw the headers the player has to click. */
+  ensureCableTargets() {
+    if (!this.cableTargets.length) this.cableTargets = this.buildCableTargets();
+    this.scene?.showCableTargets(this.cableTargets, this.activeStep()?.zone || 'cables');
+    return this.cableTargets;
+  }
+
+  /** How many parts of the current step are seated *and* latched down. */
+  pressedCount(zoneId) {
+    let n = 0;
+    this.scene?.placedParts.forEach(entry => {
+      if (entry.zoneId === zoneId && entry.pressed) n++;
+    });
+    return n;
+  }
+
+  // ------------------------------------------------------------- pointers
+  onPointerMove(e) {
+    if (!this.scene) return;
+    this.scene.setPointer(e.clientX, e.clientY);
+    this.scene.updateGhost(this.activeStep()?.zone);
+    this.updateCursorHint();
+  }
+
+  onPointerLeave() {
+    if (!this.scene) return;
+    this.scene.clearPointer();
+    this.scene.updateGhost(this.activeStep()?.zone);
+    this.setZoneHint(null);
+  }
+
+  async onPointerDown(e) {
+    if (!this.scene || e.button !== 0) return;
+    this.scene.setPointer(e.clientX, e.clientY);
+    const step = this.activeStep();
+    if (!step) return;
+    const zoneId = step.zone;
+
+    // 1. Fasteners first, once a part is bolted down
+    if (this.scene.screwsFor(zoneId) > 0) {
+      const result = this.scene.hitScrew(e.clientX, e.clientY, zoneId);
+      if (result === 'tightened') {
+        sounds.playScrew();
+        this.renderActionBar();
+        this.updateCursorHint();
+        if (this.scene.screwsFor(zoneId) === 0) this.finishScrewStep(step);
+      } else {
+        this.setToast('Bấm đúng vào đầu ốc màu vàng để siết.', 'warn');
+      }
+      return;
+    }
+
+    // 2. Thermal paste gate before the cooler can be screwed down
+    if (step.action === 'paste' && this.pendingPress && !this.pasteApplied) {
+      if (this.scene.isOverZone('cpu')) {
+        this.pasteApplied = true;
+        this.scene.flashZone('cpu');
+        sounds.playClick();
+        this.setToast('Đã bôi keo tản nhiệt lên nắp lưng CPU. Giờ siết 4 ốc của tản khí.', 'ok');
+        this.startScrewStep(step);
+      } else {
+        this.setToast('Bấm vào vị trí CPU trên bo mạch để bôi keo tản nhiệt.', 'warn');
+      }
+      return;
+    }
+
+    // 3. Press the part down / close the retention latch
+    if (step.action === 'seat' && this.pendingPress) {
+      if (this.scene.isOverZone(zoneId)) {
+        const entry = this.scene.placedParts.get(this.pendingPress);
+        if (entry) entry.pressed = true;
+        this.scene.flashZone(zoneId);
+        sounds.playSnap();
+        const done = this.pressedCount(zoneId);
+        if (done >= step.need) {
+          this.pendingPress = null;
+          this.completeStep(step.step, done > 1
+            ? `Đã cắm đủ ${done} thanh và kích hoạt kênh đôi.`
+            : 'Đã lắp và ấn khít vào socket.');
+        } else {
+          this.pendingPress = null;
+          this.setToast(`Đã lắp ${done}/${step.need}. Chọn thanh tiếp theo trong danh sách.`, 'info');
+          this.updateGhostItem();
+        }
+        this.renderActionBar();
+      } else {
+        this.setToast(`Bấm vào ${CASE_ZONES[zoneId].label.toLowerCase()} để ấn linh kiện xuống cho khít.`, 'warn');
+      }
+      return;
+    }
+
+    // 4. Steps that need no hardware
+    if (step.need === 0) {
+      this.handleActionStep(step, e);
+      return;
+    }
+
+    // 5. Seat a hardware part
+    if (!this.selectedItem) {
+      this.setToast('Chọn linh kiện ở danh sách bên phải trước đã.', 'warn');
+      return;
+    }
+    if (!stepAccepts(step, this.selectedItem)) {
+      this.setToast(`${this.selectedItem.name} không dùng được cho bước này.`, 'warn');
+      return;
+    }
+    if (!this.scene.ghostOverTarget) {
+      this.setToast(`Đưa model tới ${CASE_ZONES[zoneId].label.toLowerCase()} rồi bấm chuột trái.`, 'warn');
+      return;
+    }
+
+    await this.seatPart(step);
+  }
+
+  async seatPart(step) {
+    const item = this.selectedItem;
+    const zoneId = step.zone;
+    const partKey = `${zoneId}:${item.id}:${this.pressedCount(zoneId)}`;
+
+    if (this.scene.placedParts.size && this.scene.partAt(zoneId) &&
+        [...this.scene.placedParts.values()].filter(p => p.zoneId === zoneId).length >= step.need) {
+      this.setToast('Vị trí này đã đủ linh kiện rồi.', 'warn');
+      return;
+    }
+
+    this.scene.clearGhost();
+    const ok = await this.scene.placePart(item, zoneId, partKey);
+    if (!ok) {
+      this.setToast('Không tải được model linh kiện này.', 'warn');
+      this.updateGhostItem();
+      return;
+    }
+
+    this.scene.flashZone(zoneId);
+    sounds.playClick();
+    this.moveToBackpack(item);
+    this.scene.setFocusZone(zoneId);
+    this.renderActionBar();
+
+    if (step.action === 'paste' || step.action === 'seat') {
+      this.pendingPress = partKey;
+      this.setToast(
+        step.action === 'paste'
+          ? 'Tản khí đã đặt lên socket. Bấm vào CPU để bôi keo tản nhiệt.'
+          : 'Bấm chuột trái lần nữa vào vị trí này để ấn linh kiện xuống cho khít.',
+        'info'
+      );
+      this.updateGhostItem();
+      return;
+    }
+
+    this.startScrewStep(step);
+  }
+
+  startScrewStep(step) {
+    const count = step.screws ?? CASE_ZONES[step.zone]?.screws ?? 0;
+    if (!count) {
+      this.completeStep(step.step);
+      return;
+    }
+    this.scene.showScrews(step.zone, count);
+    this.scene.setFocusZone(step.zone);
+    this.setToast(`Còn ${count} ốc. Bấm vào từng đầu ốc màu vàng để siết chặt.`, 'info');
+    this.renderActionBar();
+    this.updateGhostItem();
+    this.updateCursorHint();
+  }
+
+  finishScrewStep(step) {
+    this.scene.hideScrews(step.zone);
+    this.renderActionBar();
+    this.updateCursorHint();
+    this.completeStep(
+      step.step,
+      step.action === 'paste'
+        ? 'Keo tản nhiệt đã bôi và tản khí đã siết chặt.'
+        : 'Đã siết đủ ốc, linh kiện cố định trong thùng.'
+    );
+  }
+
+  // ------------------------------------------------- action-only steps
+  handleActionStep(step, e) {
+    const zoneId = step.zone;
+
+    if (step.action === 'glass') {
+      const wantOn = step.step === 10;
+      if (this.scene.glassOn !== wantOn) {
+        this.toggleGlass();
+      } else {
+        this.setToast(wantOn
+          ? 'Nắp kính đã được lắp lại. Bấm nút để tháo ra nếu cần.'
+          : 'Nắp kính đã tháo rồi.', 'info');
+      }
+      return;
+    }
+
+    if (step.action === 'cable') {
+      this.ensureCableTargets();
+      const hit = this.pickCable(e);
+      if (hit) this.connectCable(hit);
+      else this.setToast('Bấm vào từng đầu cáp màu cam để cắm dây nguồn.', 'warn');
+      return;
+    }
+
+    if (step.action === 'display') {
+      if (this.scene.isOverZone(zoneId)) {
+        this.scene.flashZone(zoneId);
+        sounds.playSnap();
+        this.completeStep(step.step, 'Đã cắm DisplayPort từ card đồ họa ra màn hình.');
+      } else {
+        this.setToast('Bấm vào cổng DisplayPort ở mặt sau thùng.', 'warn');
+      }
+      return;
+    }
+
+    if (step.action === 'power') {
+      if (this.scene.isOverZone(zoneId)) {
+        this.scene.setPower(true);
+        this.scene.flashZone(zoneId);
+        sounds.playPowerSwitch();
+        this.room.setMonitorState('NO_SIGNAL');
+        this.completeStep(step.step, 'Đã bật nguồn. Hệ thống đang chạy POST...');
+        this.schedulePost();
+      } else {
+        this.setToast('Bấm vào nút nguồn trên nắp trên của thùng.', 'warn');
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- cables
+  buildCableTargets() {
+    // 24-pin board header, CPU EPS header, PCIe aux and the SATA run
+    return [
+      { id: 'atx24', label: 'cáp 24-pin ATX', offset: [0.0, 0.085, 0.11], done: false },
+      { id: 'eps8', label: 'cáp 8-pin CPU', offset: [-0.055, 0.145, -0.155], done: false },
+      { id: 'pcie8', label: 'cáp 8-pin PCIe', offset: [0.05, -0.03, 0.135], done: false },
+      { id: 'sata', label: 'cáp SATA', offset: [-0.035, -0.115, 0.05], done: false }
+    ];
+  }
+
+  cableWorldPosition(target) {
+    const zone = CASE_ZONES.cables;
+    return this._v.set(
+      zone.anchor[0] + target.offset[0],
+      zone.anchor[1] + target.offset[1],
+      zone.anchor[2] + target.offset[2]
+    );
+  }
+
+  pickCable(e) {
+    const rect = this.scene.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    let best = null;
+    let bestDist = Infinity;
+    this.scene.pivot.updateMatrixWorld(true);
+    this.cableTargets.forEach(target => {
+      if (target.done) return;
+      const world = this.cableWorldPosition(target).clone();
+      this.scene.pivot.localToWorld(world);
+      const ndc = world.project(this.scene.camera);
+      if (ndc.z > 1) return;
+      const sx = ((ndc.x + 1) / 2) * rect.width;
+      const sy = ((-ndc.y + 1) / 2) * rect.height;
+      const d = Math.hypot(sx - cx, sy - cy);
+      if (d < bestDist) { bestDist = d; best = target; }
+    });
+    return bestDist < 52 ? best : null;
+  }
+
+  connectCable(target) {
+    target.done = true;
+    sounds.playSnap();
+    this.scene?.markCableDone(target.id);
+    const left = this.cableTargets.filter(t => !t.done).length;
+    this.renderActionBar();
+    this.updateCursorHint();
+    if (left === 0) {
+      this.scene?.flashZone('cables');
+      this.completeStep(this.currentStep, 'Đã cắm đủ cáp 24-pin, 8-pin CPU, 8-pin PCIe và SATA.');
+    } else {
+      this.setToast(`Đã cắm ${target.label}. Còn ${left} dây nữa.`, 'info');
+    }
+  }
+
+  // ------------------------------------------------------------ POST / OS
+  schedulePost() {
+    this.clearPostTimers();
+    POST_SEQUENCE.forEach(entry => {
+      this.postTimers.push(setTimeout(() => {
+        this.room.setMonitorState(entry.state);
+        this.setToast(entry.text, 'info');
+      }, entry.at));
+    });
+  }
+
+  clearPostTimers() {
+    this.postTimers.forEach(t => clearTimeout(t));
+    this.postTimers = [];
+  }
+
+  onPowered() {
+    this.setToast('Chúc mừng! Bạn đã lắp ráp thành công đủ 12 bước.', 'ok');
+    this.renderStep();
+    this.renderChecklist();
+    // confetti needs a real 2D canvas, so never let it break the win state
+    try {
+      confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+      setTimeout(() => {
+        confetti({ particleCount: 90, angle: 60, spread: 55, origin: { x: 0 } });
+        confetti({ particleCount: 90, angle: 120, spread: 55, origin: { x: 1 } });
+      }, 400);
+    } catch (err) {
+      console.warn('Confetti unavailable:', err);
+    }
+  }
+
+  // ------------------------------------------------------------ inventory
+  moveToBackpack(item) {
+    this.inventoryUI.removeItem(item.id);
+    this.selectedItem = null;
+    this.renderSlots();
+  }
+
+  availableItems() {
+    return this.inventoryUI.slots.filter(Boolean);
+  }
+
+  renderSlots() {
+    const { list, listEmpty } = this.dom;
+    if (!list) return;
+    const step = this.activeStep();
+    list.innerHTML = '';
+    const items = this.availableItems();
+    if (listEmpty) listEmpty.style.display = items.length ? 'none' : 'flex';
+
+    items.forEach(item => {
+      const usable = step ? stepAccepts(step, item) : false;
+      const chosen = this.selectedItem?.id === item.id;
+      const row = document.createElement('div');
+      row.className = 'build-slot' + (usable ? ' usable' : '') + (chosen ? ' selected' : '');
+      row.innerHTML = `
+        <div class="build-slot-thumb">
+          <img alt="" />
+          <span class="build-slot-fallback">${FALLBACK_GLYPH[item.categoryKey] || '▧'}</span>
+        </div>
+        <div class="build-slot-text">
+          <div class="build-slot-name">${item.name}</div>
+          <div class="build-slot-tag tag-${item.categoryKey}">${item.tag}</div>
+        </div>
+        <div class="build-slot-state">${usable ? 'Dùng được' : ''}</div>
+      `;
+      row.addEventListener('click', () => this.selectSlotItem(item));
+      list.appendChild(row);
+
+      const img = row.querySelector('img');
+      const cached = this.thumbnails.cache.get(item.id);
+      if (cached) {
+        img.src = cached;
+        img.classList.add('ready');
+      } else {
+        this.thumbnails.get(item).then(url => {
+          if (!url || !img.isConnected) return;
+          img.src = url;
+          img.classList.add('ready');
+        }).catch(() => {});
+
+      }
+    });
+  }
+
+  async selectSlotItem(item) {
+    const step = this.activeStep();
+    sounds.playClick();
+    if (step && !stepAccepts(step, item)) {
+      this.setToast(`${item.name} không dùng được cho bước ${step.step}.`, 'warn');
+      return;
+    }
+    this.selectedItem = item;
+    this.renderSlots();
+    await this.updateGhostItem(item);
+    this.setToast(`Đã cầm ${item.name}. Rê chuột trong Build Zone rồi bấm chuột trái để lắp.`, 'info');
+  }
+
+  async updateGhostItem(item) {
+    if (!this.scene) return;
+    if (!item) {
+      this.scene.clearGhost();
+      this.setZoneHint(null);
+      return;
+    }
+    const step = this.activeStep();
+    if (!step) return;
+    await this.scene.setGhostItem(item);
+    this.scene.setZoneState(step.zone, 'active');
+    this.scene.updateGhost(step.zone);
+  }
+
+  updateCursorHint() {
+    if (!this.scene) return;
+    const step = this.activeStep();
+    if (!step) return this.setZoneHint(null);
+    const zoneId = step.zone;
+
+    if (this.scene.screwsFor(zoneId) > 0) {
+      return this.setZoneHint('🔩 Bấm vào đầu ốc vàng để siết chặt', 'action');
+    }
+    if (step.action === 'paste' && this.pendingPress && !this.pasteApplied) {
+      return this.setZoneHint('🌡️ Bấm vào CPU để bôi keo tản nhiệt', 'action');
+    }
+    if (step.action === 'seat' && this.pendingPress) {
+      return this.setZoneHint('⬇️ Bấm vào linh kiện để ấn xuống cho khít', 'action');
+    }
+    if (step.need === 0) {
+      const labels = {
+        glass: '🪟 Dùng nút THÁO / ĐÓNG NẮP KÍNH',
+        cable: '🔌 Bấm vào từng đầu cáp màu cam',
+        display: '🖥️ Bấm vào cổng DisplayPort phía sau thùng',
+        power: '⏻ Bấm nút nguồn trên nắp trên'
+      };
+      if (step.action === 'cable') this.ensureCableTargets();
+      return this.setZoneHint(labels[step.action] || '', 'action');
+    }
+    if (!this.selectedItem) {
+      return this.setZoneHint('👆 Chọn linh kiện ở danh sách bên phải', 'idle');
+    }
+    if (this.scene.ghostOverTarget) {
+      return this.setZoneHint(`✅ ${CASE_ZONES[zoneId].label} — bấm chuột trái để lắp`, 'ready');
+    }
+    return this.setZoneHint(`🎯 Đưa tới ${CASE_ZONES[zoneId].label}`, 'idle');
+  }
+
+  setZoneHint(text, kind) {
+    const el = this.dom.hint;
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'build-zone-hint' + (text ? ` show ${kind || 'idle'}` : '');
+  }
+
+  // -------------------------------------------------------------- chrome
+  renderStep() {
+    const { stepBadge, stepTitle, stepDesc, stepTip, stepHint, progress } = this.dom;
+    const step = this.activeStep();
+    if (!step) return;
+
+    if (stepBadge) stepBadge.textContent = `BƯỚC ${step.step} / ${TOTAL_STEPS}`;
+    if (stepTitle) stepTitle.textContent = step.title;
+    if (stepDesc) stepDesc.textContent = step.instruction;
+    if (stepTip) stepTip.innerHTML = `<strong>💡 Mẹo thực tế:</strong> ${step.tip}`;
+    if (stepHint) stepHint.textContent = step.shortHint || '';
+    if (progress) progress.style.width = `${(this.completed.size / TOTAL_STEPS) * 100}%`;
+    this.updateGlassUi();
+    this.renderActionBar();
+  }
+
+  updateGlassUi() {
+    const { glassTag, glassBtn } = this.dom;
+    const on = this.scene?.glassOn;
+    if (glassTag) glassTag.textContent = on ? '🛡️ Nắp kính: Đang lắp' : '🔓 Nắp kính: Đã tháo';
+    if (glassBtn) glassBtn.textContent = on ? '🔓 Tháo Nắp Kính' : '🔒 Lắp Lại Nắp Kính';
+  }
+
+  toggleGlass() {
+    if (!this.scene) return;
+    const on = !this.scene.glassOn;
+    this.scene.setGlass(on);
+    sounds.playSnap();
+    this.updateGlassUi();
+
+    const step = this.activeStep();
+    if (step?.action === 'glass') {
+      const wantOn = step.step === 10;
+      if (this.scene.glassOn === wantOn) {
+        this.completeStep(step.step, wantOn
+          ? 'Đã đóng nắp kính và siết 4 núm vặn.'
+          : 'Đã tháo nắp kính, ruột thùng đang mở.');
+      }
+    }
+  }
+
+  renderActionBar() {
+    const bar = this.dom.actionBar;
+    if (!bar) return;
+    const step = this.activeStep();
+    if (!step) { bar.innerHTML = ''; return; }
+
+    const chips = [];
+    const screws = this.scene ? this.scene.screwsFor(step.zone) : 0;
+    if (screws > 0) chips.push(`<div class="build-chip amber">🔩 Còn ${screws} ốc chưa siết</div>`);
+    if (step.action === 'paste' && this.pendingPress && !this.pasteApplied) {
+      chips.push('<div class="build-chip cyan">🌡️ Cần bôi keo tản nhiệt</div>');
+    }
+    if (step.action === 'seat' && this.pendingPress) {
+      chips.push('<div class="build-chip cyan">⬇️ Cần ấn linh kiện xuống</div>');
+    }
+    if (step.action === 'cable' && this.cableTargets.length) {
+      const left = this.cableTargets.filter(t => !t.done).length;
+      if (left) chips.push(`<div class="build-chip amber">🔌 Còn ${left} dây nguồn</div>`);
+    }
+    if (this.completed.size >= TOTAL_STEPS) {
+      chips.push('<div class="build-chip green">🎉 Đã hoàn thành cả 12 bước</div>');
+    }
+    if (this.dom.finishBtn) {
+      const ready = this.completed.size >= TOTAL_STEPS && !this.isFinished;
+      this.dom.finishBtn.style.display = ready ? '' : 'none';
+      this.dom.finishBtn.disabled = !ready;
+    }
+    bar.innerHTML = chips.join('');
+  }
+
+  renderChecklist() {
+    const el = this.dom.checklist;
+    if (!el) return;
+    el.innerHTML = ASSEMBLY_STEPS.map(step => {
+      const done = this.completed.has(step.step);
+      const current = step.step === this.currentStep && !done;
+      return `
+        <div class="build-check${done ? ' done' : ''}${current ? ' current' : ''}">
+          <span class="build-check-num">${done ? '✓' : step.step}</span>
+          <span class="build-check-name">${step.shortName}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  setToast(message, kind = 'info') {
+    const el = this.dom.toast;
+    if (!el) return;
+    el.textContent = message || '';
+    el.className = 'build-toast' + (message ? ` show ${kind}` : '');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      el.className = 'build-toast';
+    }, 4600);
+  }
+
+  // ------------------------------------------------------------- per frame
+  update(delta, now) {
+    if (!this.isOpen || !this.scene) return;
+    this.scene.update(delta, now);
+  }
+}

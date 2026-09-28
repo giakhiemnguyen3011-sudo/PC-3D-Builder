@@ -2,3 +2,5 @@
 switch-key.ps1
 run-opencode.ps1
 *.log
+.opencode/
+

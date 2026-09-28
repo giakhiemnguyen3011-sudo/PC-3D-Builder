@@ -15,12 +15,8 @@ export class InventoryUI {
     this.selectedSlotIndex = null;
     this.selectedItem = null;
 
-    // Initial state: first 4 items in inventory slots, others on shelf
-    HARDWARE_ITEMS.forEach((item, idx) => {
-      if (idx < 4) {
-        this.slots[idx] = item;
-      }
-    });
+    // Initial state: all items start on the shelf
+    this.slots = new Array(this.maxSlots).fill(null);
 
     this.modalEl = document.getElementById('inventory-modal');
     this.setupDOM();
@@ -150,7 +146,7 @@ export class InventoryUI {
     this.showDetailPanel(item);
 
     if (this.previewScene) {
-      this.previewScene.loadItemModel(item.modelPath, item.baseRotation);
+      this.previewScene.loadItemModel(item.modelPath);
     }
   }
 

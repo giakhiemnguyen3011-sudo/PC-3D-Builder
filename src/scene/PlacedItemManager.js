@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { sounds } from '../audio/SoundEffects.js';
+import { buildFittedModel } from './ModelFit.js';
 
 export class PlacedItemManager {
   constructor(scene) {
@@ -13,45 +14,27 @@ export class PlacedItemManager {
     this.scene.add(this.group);
   }
 
-  placeItemAt(itemData, worldPosition, surfaceNormal = new THREE.Vector3(0, 1, 0)) {
+  placeItemAt(itemData, worldPosition) {
     sounds.playDrop();
 
     this.loader.load(
       itemData.modelPath,
       gltf => {
-        const model = gltf.scene;
+        // Real-world metres, laid flat and straight, resting on y = 0
+        const { group } = buildFittedModel(gltf.scene, {
+          realSize: itemData.realSize,
+          flat: true
+        });
 
-        // Normalize size
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const targetDim = 0.32;
-        const s = (targetDim / (maxDim || 1)) * (itemData.scale || 1.0);
-        model.scale.set(s, s, s);
-
-        // Center on pivot
-        model.position.set(-center.x * s, -box.min.y * s, -center.z * s);
-
-        const innerWrapper = new THREE.Group();
-        innerWrapper.add(model);
-
-        // Apply calibrated base rotation so it lays flat / stands upright
-        if (itemData.baseRotation) {
-          innerWrapper.rotation.set(
-            itemData.baseRotation.x || 0,
-            itemData.baseRotation.y || 0,
-            itemData.baseRotation.z || 0
-          );
-        }
+        // Long edge along the world X axis, label side towards the room
+        const yaw = new THREE.Group();
+        yaw.rotation.y = -Math.PI / 2;
+        yaw.add(group);
 
         const outerWrapper = new THREE.Group();
-        outerWrapper.add(innerWrapper);
-
-        // Slight offset above surface to avoid z-fighting
-        const posY = Math.max(0.01, worldPosition.y + 0.01);
-        outerWrapper.position.set(worldPosition.x, posY, worldPosition.z);
+        outerWrapper.add(yaw);
+        // Hairline offset above the surface to avoid z-fighting
+        outerWrapper.position.set(worldPosition.x, worldPosition.y + 0.002, worldPosition.z);
 
         outerWrapper.traverse(child => {
           if (child.isMesh) {

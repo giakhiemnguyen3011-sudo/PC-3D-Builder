@@ -1,7 +1,16 @@
 /**
  * Hardware Components Database
  * Contains realistic technical specifications, tags, 3D model paths, educational notes,
- * calibrated baseRotation, and crisp SVG icons for Inventory slots.
+ * real-world dimensions in metres, and crisp SVG icons for Inventory slots.
+ *
+ * Sizing contract:
+ *   realSize   - the longest real-world edge of the part, in metres. Every mesh is
+ *                scaled so its bounding box matches this, so a 0.04 CPU really is
+ *                4 cm wide next to a 0.305 ATX board.
+ *   footprint  - real-world length/depth (metres) reserved on the rack. `length`
+ *                runs along the rack, `depth` across it. Used to lay items out
+ *                evenly and to auto-grow the rack.
+ *   shelfTier  - which rack tier the part is displayed on (0 = bottom).
  */
 
 export const HARDWARE_CATEGORIES = {
@@ -26,9 +35,10 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/Motherboard_model/rog_strix_z370-e_gaming_motherboard_3d_model.glb',
     brand: 'ASUS Republic of Gamers',
     price: '4,890,000 đ',
-    shelfPosition: { x: 3.2, y: 1.87, z: -0.8 },
-    scale: 0.95,
-    baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    realSize: 0.305,
+    footprint: { length: 0.305, depth: 0.252 },
+    shelfTier: 0,
+
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="6" width="52" height="52" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
       <rect x="14" y="14" width="16" height="16" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
@@ -61,9 +71,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/CPU_model/cpu_ryzen_5_3600.glb',
     brand: 'AMD',
     price: '3,290,000 đ',
-    shelfPosition: { x: 3.2, y: 1.86, z: 0.1 },
-    scale: 0.125,
-    baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    realSize: 0.04,
+    footprint: { length: 0.04, depth: 0.04 },
+    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="10" width="44" height="44" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
       <rect x="18" y="18" width="28" height="28" rx="3" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/>
@@ -86,6 +96,30 @@ export const HARDWARE_ITEMS = [
     beginnerTip: '💡 Khi lắp CPU, hãy tìm biểu tượng tam giác vàng ở góc con chip và căn trùng khớp với dấu tam giác trên socket. Nhẹ nhàng đặt xuống, tuyệt đối không dùng lực đè mạnh!'
   },
   {
+    id: 'cpu_intel',
+    name: 'Intel Core i7-9700K Processor',
+    category: HARDWARE_CATEGORIES.CPU,
+    categoryKey: 'cpu',
+    tag: 'CPU',
+    modelPath: '/models/CPU_model/intel_cpu.glb',
+    brand: 'Intel',
+    price: '4,190,000 đ',
+    realSize: 0.0375,
+    footprint: { length: 0.0375, depth: 0.0375 },
+    shelfTier: 1,
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="10" width="44" height="44" rx="4" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
+      <rect x="18" y="18" width="28" height="28" rx="3" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="32" y="35" font-size="7" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">INTEL</text>
+    </svg>`,
+    specs: [
+      { label: 'Cores/Threads', value: '8 Cores / 8 Threads' },
+      { label: 'Socket', value: 'LGA 1151' }
+    ],
+    description: 'Bộ vi xử lý hiệu năng cao từ Intel.',
+    beginnerTip: '💡 Đặt cẩn thận vào socket.'
+  },
+  {
     id: 'cooler_master_212',
     name: 'Cooler Master Hyper Black Edition',
     category: HARDWARE_CATEGORIES.COOLER,
@@ -94,9 +128,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/CPU_Cooler_model/cooler_master_cpu_cooler.glb',
     brand: 'Cooler Master',
     price: '890,000 đ',
-    shelfPosition: { x: 3.2, y: 1.86, z: 0.9 },
-    scale: 0.50,
-    baseRotation: { x: Math.PI / 2, y: 0, z: 0 },
+    realSize: 0.154,
+    footprint: { length: 0.154, depth: 0.12 },
+    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="10" width="36" height="38" rx="4" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
       <circle cx="32" cy="29" r="13" stroke="#c084fc" stroke-width="2"/>
@@ -125,9 +159,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/RAM_model/ram_ddr4_g.skill_trident_z_rgb.glb',
     brand: 'G.SKILL',
     price: '1,750,000 đ',
-    shelfPosition: { x: 3.2, y: 1.36, z: -0.8 },
-    scale: 0.415,
-    baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.051 },
+    shelfTier: 0,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
       <rect x="10" y="20" width="44" height="6" rx="2" fill="url(#rgbGrad)"/>
@@ -157,6 +191,81 @@ export const HARDWARE_ITEMS = [
     beginnerTip: '💡 Khi cắm 2 thanh RAM trên bo mạch chủ có 4 khe, hãy cắm vào khe 2 và khe 4 (khe DIMM A2 & B2) để kích hoạt chế độ Kênh Đôi (Dual-Channel) giúp tăng gấp đôi băng thông nhớ!'
   },
   {
+    id: 'ram_corsair_dominator',
+    name: 'Corsair Dominator Platinum RGB 16GB',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/corsair_dominator_rgb_ram.glb',
+    brand: 'Corsair',
+    price: '2,150,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.06 },
+    shelfTier: 0,
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+    </svg>`,
+    specs: [
+      { label: 'Dung lượng', value: '16GB DDR4' },
+      { label: 'Bus', value: '3600MHz' }
+    ],
+    description: 'Thanh RAM cao cấp tản nhiệt nhôm độc quyền.',
+    beginnerTip: '💡 Cắm chặt vào khe DIMM.'
+  },
+  {
+    id: 'ram_gskill_tridentz_16gb_b',
+    name: 'G.SKILL Trident Z RGB 16GB (2x8GB) DDR4 - Kit B',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/ram_ddr4_g.skill_trident_z_rgb.glb',
+    brand: 'G.SKILL',
+    price: '1,750,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.051 },
+    shelfTier: 0,
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
+      <rect x="10" y="20" width="44" height="6" rx="2" fill="#38bdf8"/>
+      <rect x="14" y="30" width="8" height="10" fill="#334155"/>
+      <rect x="26" y="30" width="8" height="10" fill="#334155"/>
+      <rect x="38" y="30" width="8" height="10" fill="#334155"/>
+      <path d="M12 46v4M16 46v4M20 46v4M24 46v4M36 46v4M40 46v4M44 46v4M48 46v4" stroke="#fbbf24" stroke-width="1.5"/>
+    </svg>`,
+    specs: [
+      { label: 'Dung lượng bộ nhớ', value: '16GB (Kit 2 thanh x 8GB)' },
+      { label: 'Chuẩn RAM', value: 'DDR4 Unbuffered DIMM' },
+      { label: 'Tốc độ Bus RAM', value: '3200 MHz (PC4-25600)' },
+      { label: 'Độ trễ Timing (CAS)', value: 'CL16-18-18-38' },
+      { label: 'Hiệu ứng ánh sáng', value: 'LED RGB Dynamic Flow 5 vùng sáng' }
+    ],
+    description: 'Kit RAM DDR4 thứ hai cùng series để ghép thành cặp kênh đôi hoàn chỉnh trong cùng một bộ máy.',
+    beginnerTip: '💡 Nên dùng hai thanh cùng brand, cùng bus, cùng timing để kênh đôi chạy ổn định nhất.'
+  },
+  {
+    id: 'ram_corsair_dominator_b',
+    name: 'Corsair Dominator Platinum RGB 16GB - Kit B',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/corsair_dominator_rgb_ram.glb',
+    brand: 'Corsair',
+    price: '2,150,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.06 },
+    shelfTier: 0,
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+      <rect x="10" y="20" width="44" height="6" rx="2" fill="#fbbf24"/>
+    </svg>`,
+    specs: [
+      { label: 'Dung lượng', value: '16GB DDR4' },
+      { label: 'Bus', value: '3600MHz' }
+    ],
+    description: 'Kit RAM Corsair Dominator Platinum thứ hai, dành cho người muốn ghép cặp DIMM high-end.',
+    beginnerTip: '💡 Lắp vào khe DIMM A2 và B2 để kích hoạt kênh đôi.'
+  },
+  {
     id: 'ssd_samsung_860',
     name: 'Samsung 860 EVO 500GB 2.5" SATA III',
     category: HARDWARE_CATEGORIES.STORAGE,
@@ -165,9 +274,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/SSD_model/samsung_ssd_2.5in_-_dirty.glb',
     brand: 'Samsung',
     price: '1,450,000 đ',
-    shelfPosition: { x: 3.2, y: 1.36, z: 0.1 },
-    scale: 0.3125,
-    baseRotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    realSize: 0.1,
+    footprint: { length: 0.1, depth: 0.07 },
+    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="12" y="10" width="40" height="44" rx="4" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
       <rect x="26" y="24" width="12" height="12" fill="#f97316"/>
@@ -196,9 +305,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/PSU_model/psu_power_supply_unit.glb',
     brand: 'Cooler Master / Aerocool',
     price: '1,590,000 đ',
-    shelfPosition: { x: 3.2, y: 1.36, z: 0.9 },
-    scale: 0.47,
-    baseRotation: { x: 0, y: 0, z: 0 },
+    realSize: 0.15,
+    footprint: { length: 0.15, depth: 0.15 },
+    shelfTier: 0,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="12" width="44" height="40" rx="4" fill="#0f172a" stroke="#f97316" stroke-width="2"/>
       <circle cx="32" cy="32" r="14" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="3 3"/>
@@ -227,9 +336,9 @@ export const HARDWARE_ITEMS = [
     modelPath: '/models/GPU_model/nvidia_geforce_rtx_3090_-_gpu.glb',
     brand: 'NVIDIA',
     price: '34,900,000 đ',
-    shelfPosition: { x: 3.2, y: 0.86, z: -0.4 },
-    scale: 0.98,
-    baseRotation: { x: 0, y: 0, z: 0 },
+    realSize: 0.313,
+    footprint: { length: 0.313, depth: 0.15 },
+    shelfTier: 0,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="16" width="52" height="32" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
       <circle cx="22" cy="32" r="10" stroke="#4ade80" stroke-width="2"/>
@@ -251,5 +360,27 @@ export const HARDWARE_ITEMS = [
     ],
     description: 'Quái thú đồ họa (BFGPU) đỉnh cao nhất thế giới cho phép trải nghiệm game mượt mà ở độ phân giải 8K HDR và dựng hình 3D, Render video chuyên nghiệp.',
     beginnerTip: '💡 Card đồ họa rất nặng và tiêu thụ nhiều điện. Hãy lắp vào khe PCIe x16 trên cùng gần CPU nhất để đạt tốc độ tối đa, siết chặt ốc giữ ở thành case và cắm đủ nguồn 8-Pin PCIe!'
+  },
+  {
+    id: 'gpu_rx_480',
+    name: 'AMD Radeon RX 480 8GB GDDR5',
+    category: HARDWARE_CATEGORIES.GPU,
+    categoryKey: 'gpu',
+    tag: 'GPU',
+    modelPath: '/models/GPU_model/rx_480_gpu.glb',
+    brand: 'AMD',
+    price: '2,990,000 đ',
+    realSize: 0.24,
+    footprint: { length: 0.24, depth: 0.135 },
+    shelfTier: 0,
+    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="16" width="52" height="32" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
+    </svg>`,
+    specs: [
+      { label: 'VRAM', value: '8GB GDDR5' },
+      { label: 'Bus', value: '256-bit' }
+    ],
+    description: 'Card đồ họa tầm trung bền bỉ.',
+    beginnerTip: '💡 Lắp vào khe PCIe x16.'
   }
 ];

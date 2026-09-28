@@ -59,6 +59,64 @@ class SoundEffects {
     osc.stop(this.ctx.currentTime + 0.12);
   }
 
+  /**
+   * A part being set down on the desk / shelf: dull metallic clatter followed
+   * by the soft bounce of the chassis it landed on.
+   */
+  playDrop() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Hollow body impact
+    const body = this.ctx.createOscillator();
+    const bodyGain = this.ctx.createGain();
+    body.type = 'sine';
+    body.frequency.setValueAtTime(300, t);
+    body.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+    bodyGain.gain.setValueAtTime(0.28, t);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    body.connect(bodyGain);
+    bodyGain.connect(this.ctx.destination);
+    body.start(t);
+    body.stop(t + 0.12);
+
+    // High metallic rattle from the heatsink fins / PCB
+    const rattle = this.ctx.createOscillator();
+    const rattleGain = this.ctx.createGain();
+    rattle.type = 'square';
+    rattle.frequency.setValueAtTime(1400, t);
+    rattle.frequency.exponentialRampToValueAtTime(320, t + 0.05);
+    rattleGain.gain.setValueAtTime(0.1, t);
+    rattleGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    rattle.connect(rattleGain);
+    rattleGain.connect(this.ctx.destination);
+    rattle.start(t);
+    rattle.stop(t + 0.05);
+  }
+
+  /** Same gesture, slightly brighter - used when stowing into the inventory. */
+  playEquip() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(240, t + 0.1);
+    gain.gain.setValueAtTime(0.16, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+
   playSnap() {
     if (!this.enabled) return;
     this.init();

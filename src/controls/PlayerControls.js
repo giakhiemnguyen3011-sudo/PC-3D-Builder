@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getTableObstacle } from '../scene/shelfLayout.js';
 
 export class PlayerControls {
   constructor(camera, domElement, onInteract, onStow, onToggleInventory) {
@@ -27,7 +28,7 @@ export class PlayerControls {
     this.bounds = { minX: -5.4, maxX: 5.4, minZ: -4.4, maxZ: 4.4 };
     this.obstacles = [
       { minX: -1.35, maxX: 1.35, minZ: -0.75, maxZ: 0.75 }, // Workbench
-      { minX: 2.7, maxX: 3.9, minZ: -1.35, maxZ: 1.35 }    // Iron rack
+      getTableObstacle()                                        // Parts table
     ];
 
     // Raycaster for interactions and placement
@@ -297,6 +298,8 @@ export class PlayerControls {
       textEl.textContent = `[Chuột trái] Cắm Dây nguồn & Cáp tín hiệu`;
     } else if (uData.snapType) {
       textEl.textContent = `[Chuột trái] Lắp ráp: ${uData.snapType.toUpperCase()}`;
+    } else if (uData.type === 'computerCase') {
+      textEl.textContent = `[Chuột trái] Mở Menu Thùng Máy`;
     } else if (uData.type === 'monitor') {
       textEl.textContent = `[Chuột trái] Cắm cáp màn hình`;
     }

@@ -135,6 +135,68 @@
     </div>
   </div>
 
+  <!-- Build Mode Modal -->
+  <div id="build-mode-modal">
+    <div class="build-mode-container">
+      <div class="build-mode-top-bar">
+        <div class="build-mode-title-group">
+          <span class="build-mode-title">🛠️ CHẾ ĐỘ LẮP RÁP THÙNG MÁY (BUILD MODE)</span>
+          <span id="build-step-badge" class="build-step-badge">BƯỚC 1 / 12</span>
+        </div>
+        <div class="build-top-actions">
+          <button id="btn-toggle-glass" class="build-glass-btn">🔓 Tháo Nắp Kính</button>
+          <button id="btn-build-finish" class="build-finish-btn" style="display:none;">✅ Vặn Kính &amp; Hoàn Tất</button>
+          <button id="btn-build-reset" class="build-reset-btn" title="Làm lại từ đầu">↺ Làm lại</button>
+          <button id="btn-close-build-mode" title="Đóng (ESC)">✕</button>
+        </div>
+      </div>
+
+      <div class="build-mode-body">
+        <!-- Left: Build Zone - the x-ray case you assemble inside -->
+        <div class="build-zone-side">
+          <canvas id="build-case-canvas"></canvas>
+
+          <div class="build-zone-topline">
+            <span id="glass-status-tag" class="build-case-info-tag">🔓 Nắp kính: Đã tháo</span>
+            <span class="build-xray-tag">🔍 Vỏ thùng trong suốt 50%</span>
+            <span id="build-zoom-tag" class="build-xray-tag">🔍 Thu phóng 100%</span>
+          </div>
+
+          <div id="build-zone-hint" class="build-zone-hint"></div>
+          <div id="build-toast" class="build-toast"></div>
+          <div id="build-action-bar" class="build-action-bar"></div>
+        </div>
+
+        <!-- Right: current step + the 12 step checklist -->
+        <div class="build-panel-side">
+          <div class="build-panel-scroll">
+            <div class="build-step-head">
+              <div id="build-step-title" class="build-step-title">Bước 1</div>
+              <div id="build-step-hint" class="build-step-short"></div>
+            </div>
+            <div class="build-progress-track">
+              <div id="build-progress-fill" class="build-progress-fill"></div>
+            </div>
+            <p id="build-step-desc" class="build-step-desc"></p>
+            <div id="build-step-tip" class="build-step-tip"></div>
+            <div class="build-checklist-title">TIẾN ĐỘ 12 BƯỚC</div>
+            <div id="build-checklist" class="build-checklist"></div>
+          </div>
+        </div>
+
+        <!-- Far right: hardware slots showing real 3D models -->
+        <div class="build-inventory-side">
+          <div class="build-sidebar-title">📦 LINH KIỆN TRONG KHO</div>
+          <div class="build-sidebar-sub">Chọn linh kiện → rê chuột vào Build Zone → bấm chuột trái</div>
+          <div id="build-slot-list" class="build-slot-list"></div>
+          <div id="build-slot-empty" class="build-vertical-empty">
+            Kho đồ trống.<br>Hãy nhặt linh kiện từ kệ sắt rồi bỏ vào túi (phím E) hoặc vứt ra bàn.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Loading Screen -->
   <div id="loading-screen">
     <div class="loading-logo">PC BUILDER 3D SIMULATOR</div>

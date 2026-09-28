@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { sounds } from '../audio/SoundEffects.js';
+import { buildFittedModel } from '../scene/ModelFit.js';
 
 export class HeldItemManager {
   constructor(camera, scene, playerControls) {
@@ -71,6 +72,9 @@ export class HeldItemManager {
         this.itemRotation.y += movementX * 0.009;
         this.itemRotation.x += movementY * 0.009;
 
+        // Upright-only items (the finished machine) may spin, never tip over
+        if (this.heldItemData.noTilt) this.itemRotation.x = 0;
+
         // Apply rotation to pivot
         this.rotationPivot.rotation.x = this.itemRotation.x;
         this.rotationPivot.rotation.y = this.itemRotation.y;
@@ -101,35 +105,34 @@ export class HeldItemManager {
     const loadAndAttach = model => {
       const cloned = model.clone();
 
-      // Normalize size
-      const box = new THREE.Box3().setFromObject(cloned);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
+      // Real-world metres, laid flat. Tiny parts (CPU pins, RAM chips) get a
+      // readability floor so they stay visible in the hand.
+      const { group, size } = buildFittedModel(cloned, {
+        realSize: itemData.realSize,
+        minSize: 0.05,
+        maxSize: 0.34,
+        flat: true
+      });
+      // buildFittedModel seats the part with minY = 0, so its centre sits half a
+      // height above the origin: pull it back so the part rests in the palm.
+      group.position.y -= size.y / 2;
 
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const targetSize = 0.35;
-      const s = targetSize / (maxDim || 1);
-      cloned.scale.set(s, s, s);
-
-      // Center model
-      cloned.position.set(-center.x * s, -center.y * s, -center.z * s);
-
-      // Wrapper to apply calibrated base rotation
-      const wrapper = new THREE.Group();
-      wrapper.add(cloned);
-
-      if (itemData.baseRotation) {
-        wrapper.rotation.set(
-          itemData.baseRotation.x || 0,
-          itemData.baseRotation.y || 0,
-          itemData.baseRotation.z || 0
-        );
-      }
-
-      this.rotationPivot.add(wrapper);
-      this.itemRotation = { x: 0.15, y: -0.35 };
-      this.rotationPivot.rotation.set(this.itemRotation.x, this.itemRotation.y, 0);
+      this.rotationPivot.add(group);
+      this.setDefaultPose();
     };
+
+    if (itemData.prebuilt) {
+      // A finished machine arrives already assembled: attach the group as-is
+      // instead of loading and re-fitting a model.
+      const holder = new THREE.Group();
+      holder.add(itemData.prebuilt);
+      itemData.prebuilt.position.set(0, 0, 0);
+      itemData.prebuilt.rotation.set(0, 0, 0);
+      holder.position.y = -itemData.prebuiltSizeY / 2 || 0;
+      this.rotationPivot.add(holder);
+      this.setDefaultPose();
+      return;
+    }
 
     if (this.modelCache.has(itemData.modelPath)) {
       loadAndAttach(this.modelCache.get(itemData.modelPath));
@@ -139,6 +142,12 @@ export class HeldItemManager {
         loadAndAttach(gltf.scene);
       });
     }
+  }
+
+  /** Inspection pose. `noTilt` items (the finished PC) may only spin on Y. */
+  setDefaultPose() {
+    this.itemRotation = { x: this.heldItemData?.noTilt ? 0 : 0.15, y: -0.35 };
+    this.rotationPivot.rotation.set(this.itemRotation.x, this.itemRotation.y, 0);
   }
 
   clearHeldItem() {

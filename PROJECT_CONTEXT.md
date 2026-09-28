@@ -77,18 +77,23 @@ D:\pc-builder-3d\
     │   └── HeldItemManager.js     # Quản lý vật phẩm cầm trên tay (First-person hand), RMB hold inspect 360°
     │
     ├── data\
-    │   └── hardware.js            # Cơ sở dữ liệu linh kiện (specs wiki, baseRotation calibration, SVG icons, steps)
+    │   ├── hardware.js            # Cơ sở dữ liệu linh kiện (specs wiki, realSize, footprint, shelfTier, SVG icons)
+    │   └── assemblyPlan.js        # Kế hoạch 12 bước lắp ráp (vị trí, linh kiện, hành động bắt buộc)
     │
     ├── scene\
-    │   ├── Room.js                # Căn phòng xưởng, bàn gỗ trung tâm, kệ sắt, màn hình máy tính 27" có canvas BIOS/OS
-    │   ├── CaseAssembly.js        # Thùng máy modular dream_computer_setup, snap zones, quạt quay, đèn RGB động
+    │   ├── Room.js                # Căn phòng xưởng, bàn gỗ trung tâm, kệ sắt, màn hình 27" có canvas BIOS/OS, placeholder thùng máy
+    │   ├── caseLayout.js          # Số đo thật của thùng ATX + CASE_ZONES (vị trí lắp, pattern ốc) - nguồn sự thật duy nhất
+    │   ├── shelfLayout.js         # Hình học kệ sắt + bố cục xếp linh kiện (tự kéo dài kệ khi cần)
+    │   ├── ModelFit.js            # Quy đổi model về kích cước thực (mét) + tự xoay cho linh kiện nằm ngang & thẳng
+    │   ├── BuildScene.js          # Build Zone tương tác: thùng x-ray 50%, vùng highlight, model theo con trỏ, ốc, cáp
+    │   ├── ItemThumbnails.js      # Nướng ảnh PNG model 3D cho danh sách linh kiện
     │   ├── ShelfHardware.js       # Bố trí linh kiện vật lý 3D trên kệ sắt bên phải phòng
     │   ├── PlacedItemManager.js   # Quản lý các vật phẩm bị thả/đặt ra bàn, sàn, kệ (nhặt lại được)
-    │   └── ItemPreviewScene.js    # Khung nhìn 3D phụ độc lập trong Inventory cho phép xoay xem linh kiện 360°
+    │   └── ItemPreviewScene.js    # Khung nhìn 3D phụ trong Inventory, tự canh giữa + khung vừa khung
     │
     ├── ui\
-    │   ├── InventoryUI.js         # Giao diện kho đồ 24 ô vuông, chọn/bỏ chọn, hiển thị wiki specs, phím E vứt đồ
-    │   └── AssemblyGuideUI.js     # Bảng theo dõi tiến độ 12 bước lắp ráp, checklist, mẹo thực tế và pháo hoa
+    │   ├── InventoryUI.js         # Giao diện kho đồ 24 ô vuông, xem wiki specs, xem trước model 3D
+    │   └── BuildModeUI.js         # Build Mode: điều phối 12 bước, danh sách linh kiện, ghim ốc/cáp, tiến trình POST
     │
     └── core\
         └── Game.js                # Bộ điều phối trung tâm tích hợp Scene, Render Loop, Collision, Event Dispatching
@@ -96,31 +101,60 @@ D:\pc-builder-3d\
 
 ---
 
-## 4. DANH SÁCH LINH KIỆN & CÂN CHỈNH GÓC XOAY (HARDWARE & BASE ROTATION)
+## 4. KÍCH THƯỚC THỰC TẾ & BỐ CỤC KỆ LINH KIỆN (REAL-WORLD SIZING & RACK LAYOUT)
 
-Do một số model xuất từ phần mềm 3D (Blender/Maya/3ds Max) bị dựng đứng hoặc nằm nghiêng, hệ thống áp dụng `baseRotation` trong `hardware.js` để tự động cân bằng:
+Do các model xuất từ phần mềm 3D (Blender/Maya/3ds Max/Sketchfab) có đơn vị và hướng đặt khác nhau (có model nằm sấp, có model đứng, có model lệch), hệ thống **không dùng `baseRotation` thủ công nữa**. Thay vào đó:
 
-1. **Bo mạch chủ**: `ASUS ROG STRIX Z370-E GAMING`
-   - `tag`: `Motherboard`
-   - `baseRotation`: `{ x: -Math.PI / 2, y: 0, z: 0 }` (Lót nằm phẳng, khe cắm & VRM hướng lên trên)
-2. **Bộ vi xử lý**: `AMD Ryzen 5 3600 (6 Cores / 12 Threads, 3.6 - 4.2GHz, 32MB Cache, TDP 65W)`
-   - `tag`: `CPU`
-   - `baseRotation`: `{ x: -Math.PI / 2, y: 0, z: 0 }` (Nắp tản nhiệt kim loại hướng lên, chân socket úp xuống)
-3. **Tản nhiệt CPU**: `Cooler Master Hyper Black Edition (Tháp tản khí 4 ống đồng, quạt 120mm PWM)`
-   - `tag`: `CPU Cooler`
-   - `baseRotation`: `{ x: Math.PI / 2, y: 0, z: 0 }` (Đứng thẳng trên chân đế)
-4. **Bộ nhớ RAM**: `G.SKILL Trident Z RGB 16GB (2x8GB) DDR4 3200MHz CL16`
-   - `tag`: `RAM`
-   - `baseRotation`: `{ x: -Math.PI / 2, y: 0, z: 0 }`
-5. **Ổ cứng thể rắn**: `Samsung 860 EVO 500GB 2.5" SATA III 6Gb/s`
-   - `tag`: `Storage`
-   - `baseRotation`: `{ x: -Math.PI / 2, y: 0, z: 0 }` (Nằm phẳng, logo Samsung ở trên)
-6. **Bộ nguồn**: `Aerocool / MasterWatt 650W 80 PLUS Bronze (Semi-Modular)`
-   - `tag`: `Power Supply`
-   - `baseRotation`: `{ x: 0, y: 0, z: 0 }`
-7. **Card đồ họa**: `NVIDIA GeForce RTX 3090 Founders Edition 24GB GDDR6X`
-   - `tag`: `GPU`
-   - `baseRotation`: `{ x: 0, y: 0, z: 0 }`
+- **`realSize`** (mét) trong `hardware.js`: cạnh dài nhất thực tế của linh kiện. Mọi mesh được scale sao cho bounding box lớn nhất khớp đúng con số này → CPU thật sự nhỏ hơn bo mạch chủ, GPU dài hơn ổ cứng.
+- **`footprint: { length, depth }`** (mét): diện tích chỗ để trên kệ. `length` chạy dọc theo kệ, `depth` chạy ngang kệ. Dùng để tính khoảng cách và kéo dài kệ.
+- **`shelfTier`**: tầng kệ hiển thị (0 = dưới cùng).
+- **`ModelFit.js`** (`buildFittedModel` + `computeFlatAlignment`): tự động
+  1. đo bounding box gốc của model,
+  2. chọn trục **mỏng nhất làm trục dọc** → linh kiện luôn *nằm ngang*, không bao giờ đứng bằng mũi,
+  3. chọn trục **dài nhất làm trục X** → cạnh dài nằm song song với kệ,
+  4. chọn phép hoán trục **ít xoay nhất** (kèm ưu tiên giữ mặt "ngửa lên") để model vốn đã nằm phẳng không bị lật,
+  5. scale về `realSize`, canh giữa theo X/Z và đặt sát mặt kệ (minY = 0).
+- **`shelfLayout.js`** (`getShelfLayout`): tính ra hình học kệ và vị trí từng linh kiện — chia đều theo tầng, giới hạn khe hở tối đa, canh giữa, và **tự kéo dài kệ** nếu tổng chiều dài vượt quá. Kết quả được `Room.js` (dựng kệ), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm) dùng chung.
+
+Kích thước thực tế đang dùng:
+
+| Linh kiện | `realSize` | Ghi chú |
+| :--- | :--- | :--- |
+| Bo mạch chủ ATX | 0.305 m | 305 × 244 mm |
+| CPU AMD Ryzen 5 3600 | 0.04 m | IHS 40 mm |
+| CPU Intel i7-9700K | 0.0375 m | LGA1151 37.5 mm |
+| Tản khí Cooler Master Hyper 212 | 0.154 m | 154 × 120 × 94 mm |
+| RAM G.SKILL Trident Z RGB | 0.1334 m | DIMM 133.35 mm |
+| RAM Corsair Dominator Platinum | 0.1334 m | DIMM 133.35 mm |
+| SSD Samsung 860 EVO 2.5" | 0.1 m | 100 × 70 × 7 mm |
+| Nguồn Aerocool MasterWatt 650W | 0.15 m | ATX 150 × 140 × 86 mm |
+| Card đồ họa RTX 3090 FE | 0.313 m | 313 mm dài |
+| Card đồ họa RX 480 | 0.24 m | 240 mm dài |
+
+### 4.1. Placeholder thùng máy tính (Build Mode)
+`createComputerCase3DGroup()` trong `Room.js` dựng thùng ATX mid-tower rỗng bằng hình khối thủ tục với kích thước vỏ thật **21 × 48 × 45 cm**. Toàn bộ số đo nằm trong **`caseLayout.js`** (nguồn sự thật duy nhất) nên vật thể trong phòng và Build Zone không bao giờ lệch nhau:
+- Khung thép + tấm đáy, nắp trên **đục lỗ thật** cho quạt 140 mm bằng `ShapeGeometry`, tấm sau **đục lỗ** khoét tròn quạt xả 120 mm, cửa sổ I/O, 7 khe PCIe và khoang nguồn.
+- Mặt trước: khung viền + tấm lưới đục lỗ `alphaTest` nhìn thấy 2 quạt hút 140 mm bên trong.
+- **Khay bo mạch đặt lùi** (x = −50 mm) để có ~147 mm độ giãn cho tản khí tháp, để lại khe luồn cáp ~42 mm phía sau — đúng tỉ lệ thùng máy thật. Khay bị khuyết ở góc trên-sau để chừa chỗ cho quạt xả, nên chân ốc thực tế còn **8/9**.
+- Tấm che nguồn (PSU shroud) kích thước **144 × 359 × 95 mm**, đủ chứa nguồn ATX 140 × 150 × 86 mm.
+- **Nắp kính cường lực** (tên `sideGlass`) + 4 núm vặn đi kèm để tháo ra thành một khối.
+- `{ xray: true }` biến toàn bộ vỏ thùng thành **trong suốt 50 %** (`transparent`, `depthWrite: false`) cho chế độ Build.
+
+### 4.2. Hệ thống Build Mode lắp ráp 12 bước
+| File | Vai trò |
+| :--- | :--- |
+| `scene/caseLayout.js` | Toàn bộ số đo thật + `CASE_ZONES` (vị trí, hướng mặt, pattern ốc) cho từng vị trí lắp |
+| `data/assemblyPlan.js` | Kế hoạch 12 bước: `zone`, `accepts` (id hoặc `tag:`), `need`, `action` |
+| `scene/BuildScene.js` | Scene Build Zone: thùng x-ray, khung highlight vị trí, model ma theo con trỏ, ốc, đầu cáp |
+| `scene/ItemThumbnails.js` | Nướng ảnh PNG model 3D cho danh sách linh kiện (1 offscreen WebGL context, có cache) |
+| `ui/BuildModeUI.js` | Điều phối 12 bước, render danh sách, ghim/bỏ linh kiện, tiến trình POST |
+
+Luồng chơi: chọn linh kiện ở danh sách → rê chuột trong Build Zone (model đi theo con trỏ, tự hút vào vùng highlight) → bấm chuột trái để cắm → làm tiếp **hành động bắt buộc** của bước đó:
+`glass` (tháo/lắp nắp kính) · `screw` (bấm từng đầu ốc, số ốc lấy từ hình học thùng) · `paste` (bấm vào CPU để bôi keo, mới mở được ốc tản) · `seat` (bấm lần nữa để ấn linh kiện xuống / đóng chốt) · `cable` (bấm 4 đầu cáp màu cam) · `display` · `power`.
+
+Camera tự glide tới đúng vị trí đang làm việc nên tạm CPU 4 cm vẫn thao tác được, nhưng **thùng không bao giờ xoay** (kính hướng thẳng về người chơi). `Làm lại` trả toàn bộ linh kiện đã lắp về túi.
+
+
 
 ---
 

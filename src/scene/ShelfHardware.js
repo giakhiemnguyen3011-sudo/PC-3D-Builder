@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HARDWARE_ITEMS } from '../data/hardware.js';
+import { buildFittedModel } from './ModelFit.js';
+import { getShelfLayout } from './shelfLayout.js';
+
+// Fitted models rest with minY = 0; lift by a hair so flat parts (SSD, CPU,
+// RAM) do not z-fight with the shelf board they are sitting on.
+const SEAT_OFFSET = 0.0005;
 
 export class ShelfHardware {
   constructor(scene) {
@@ -10,51 +16,44 @@ export class ShelfHardware {
     this.shelfMeshes = new Map();
     this.loader = new GLTFLoader();
     this.interactables = [];
+    this.layout = getShelfLayout();
 
     this.scene.add(this.group);
     this.populateShelf();
   }
 
   populateShelf() {
+    const slots = new Map();
+    this.layout.tiers.forEach(tier => {
+      tier.entries.forEach(entry => slots.set(entry.item.id, entry));
+    });
+
     this.items.forEach(item => {
-      if (!item.shelfPosition) return;
+      const slot = slots.get(item.id);
+      if (!slot) return;
 
       this.loader.load(
         item.modelPath,
         gltf => {
-          const model = gltf.scene;
+          // Real-world metres + auto flat/straight alignment (rests on y = 0)
+          const { group } = buildFittedModel(gltf.scene, {
+            realSize: item.realSize,
+            flat: true
+          });
 
-          // Normalize size
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          const center = box.getCenter(new THREE.Vector3());
+          // Long edge runs along the rack, front face turns into the room
+          const yaw = new THREE.Group();
+          yaw.rotation.y = -Math.PI / 2;
+          yaw.add(group);
 
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const targetDim = 0.32;
-          const s = (targetDim / (maxDim || 1)) * (item.scale || 1.0);
-          model.scale.set(s, s, s);
-
-          // Center on base
-          model.position.set(-center.x * s, -box.min.y * s, -center.z * s);
-
-          // Inner wrapper for calibrated baseRotation
-          const innerWrapper = new THREE.Group();
-          innerWrapper.add(model);
-
-          if (item.baseRotation) {
-            innerWrapper.rotation.set(
-              item.baseRotation.x || 0,
-              item.baseRotation.y || 0,
-              item.baseRotation.z || 0
-            );
-          }
-
-          // Outer wrapper for position and orientation on shelf
           const wrapper = new THREE.Group();
-          wrapper.add(innerWrapper);
+          wrapper.add(yaw);
+          wrapper.position.set(
+            slot.position.x,
+            slot.position.y + SEAT_OFFSET,
+            slot.position.z
+          );
 
-          wrapper.position.set(item.shelfPosition.x, item.shelfPosition.y, item.shelfPosition.z);
-          wrapper.rotation.y = -Math.PI / 2; // Face out into the room
 
           wrapper.traverse(child => {
             if (child.isMesh) {
