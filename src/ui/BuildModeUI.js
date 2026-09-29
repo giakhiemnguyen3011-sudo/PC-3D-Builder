@@ -3,7 +3,7 @@ import confetti from 'canvas-confetti';
 import { sounds } from '../audio/SoundEffects.js';
 import { BuildScene } from '../scene/BuildScene.js';
 import { ItemThumbnailBaker } from '../scene/ItemThumbnails.js';
-import { ASSEMBLY_STEPS, TOTAL_STEPS, stepAccepts } from '../data/assemblyPlan.js';
+import { ASSEMBLY_STEPS, TOTAL_STEPS, stepAccepts, stepPartNames } from '../data/assemblyPlan.js';
 import { CASE_ZONES } from '../scene/caseLayout.js';
 
 const POST_SEQUENCE = [
@@ -52,6 +52,7 @@ export class BuildModeUI {
       stepTitle: document.getElementById('build-step-title'),
       stepDesc: document.getElementById('build-step-desc'),
       stepTip: document.getElementById('build-step-tip'),
+    stepParts: document.getElementById('build-step-parts'),
       stepHint: document.getElementById('build-step-hint'),
       progress: document.getElementById('build-progress-fill'),
       checklist: document.getElementById('build-checklist'),
@@ -742,7 +743,7 @@ export class BuildModeUI {
 
   // -------------------------------------------------------------- chrome
   renderStep() {
-    const { stepBadge, stepTitle, stepDesc, stepTip, stepHint, progress } = this.dom;
+    const { stepBadge, stepTitle, stepDesc, stepTip, stepHint, stepParts, progress } = this.dom;
     const step = this.activeStep();
     if (!step) return;
 
@@ -752,8 +753,40 @@ export class BuildModeUI {
     if (stepTip) stepTip.innerHTML = `<strong>💡 Mẹo thực tế:</strong> ${step.tip}`;
     if (stepHint) stepHint.textContent = step.shortHint || '';
     if (progress) progress.style.width = `${(this.completed.size / TOTAL_STEPS) * 100}%`;
+    this.renderStepParts(step);
     this.updateGlassUi();
     this.renderActionBar();
+  }
+
+  /**
+   * Names the hardware this step calls for.
+   *
+   * Without this, steps 4 and 7 just say "lắp tản khí" or "lắp bộ nguồn" and a
+   * first-time builder has no idea which part on the bench to pick up. The names
+   * come from the catalogue, so they always match a real model.
+   */
+  renderStepParts(step) {
+    const el = this.dom.stepParts;
+    if (!el) return;
+
+    const catalogue = this.inventoryUI?.slots.filter(Boolean) || [];
+    const parts = stepPartNames(step, catalogue);
+    if (!parts.length) {
+      el.innerHTML = '';
+      el.style.display = 'none';
+      return;
+    }
+
+    el.style.display = '';
+    el.innerHTML = [
+      `<div class="build-step-parts-label">🔎 Linh kiện cần chuẩn bị</div>`,
+      ...parts.map(p => `
+        <div class="build-step-part-row">
+          <span class="build-step-part-tag">${p.tag}</span>
+          <span class="build-step-part-name">${p.label}</span>
+          ${p.variants > 1 ? `<span class="build-step-part-alt">${p.variants} lựa chọn</span>` : ''}
+        </div>`)
+    ].join('');
   }
 
   updateGlassUi() {

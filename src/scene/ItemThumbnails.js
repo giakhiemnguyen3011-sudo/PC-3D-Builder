@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildFittedModel } from './ModelFit.js';
 import { loadModelCopy } from './ModelCache.js';
+import { realDimsFor } from '../data/hardwareDims.js';
 
 /**
  * Bakes a small PNG of each hardware model for the build-mode slot list.
@@ -85,6 +86,7 @@ export class ItemThumbnailBaker {
           try {
             const { group, size } = buildFittedModel(copy, {
               realSize: item.realSize,
+              realDims: realDimsFor(item),
               flat: true
             });
             const maxDim = Math.max(...size.toArray()) || 1;

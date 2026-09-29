@@ -105,17 +105,21 @@ D:\pc-builder-3d\
 
 Do các model xuất từ phần mềm 3D (Blender/Maya/3ds Max/Sketchfab) có đơn vị và hướng đặt khác nhau (có model nằm sấp, có model đứng, có model lệch), hệ thống **không dùng `baseRotation` thủ công nữa**. Thay vào đó:
 
-- **`realSize`** (mét) trong `hardware.js`: cạnh dài nhất thực tế của linh kiện. Mọi mesh được scale sao cho bounding box lớn nhất khớp đúng con số này → CPU thật sự nhỏ hơn bo mạch chủ, GPU dài hơn ổ cứng.
+- **`realSize`** (mét) trong `hardware.js`: cạnh dài nhất thực tế của linh kiện, dùng làm **dự phòng** khi một linh kiện không có bảng kích thước riêng. CPU thật sự nhỏ hơn bo mạch chủ, GPU dài hơn ổ cứng.
+- **`hardwareDims.js`**: kích thước thật **theo từng trục** cho từng loại linh kiện, và đây mới là nguồn chuẩn khi có. Bắt buộc vì các model tải về từ nhiều trang khác nhau **mâu thuẫn cả về hướng lẫn tỉ lệ**: cùng một thanh RAM, có bản native `133 × 3,5 × 31 mm` nhưng cũng có bản `2085 × 2017 × 5017 mm`. Nếu chỉ scale cạnh dài nhất, biến thể này ra một viên gạch 53 mm dày còn biến thể kia mới đúng là DIMM — đó chính là lý do RAM nằm ngang trong khi RAM khác đứng thẳng.
 - **`footprint: { length, depth }`** (mét): diện tích chỗ để trên bàn. `length` chạy dọc theo bàn, `depth` chạy ngang bàn. Dùng để xếp hàng và tự kéo dài bàn.
 - **`shelfTier`**: *(đã bỏ)*. Bàn chỉ có **một mặt làm việc ở 0,82 m**. Linh kiện nằm ở kệ dưới là linh kiện người chơi không với tới và không nhìn thấy, nên nay **không còn kệ dưới nào** (`table.tierSurfaces` chỉ có 1 phần tử). Khi danh mục dài lên, linh kiện được **xếp thành nhiều hàng cạnh nhau trên cùng mặt bàn** (`tiers[0].rows`), chứ không xếp xuống tầng dưới.
 - **`ALL_HARDWARE_ITEMS`** = `HARDWARE_ITEMS` + `HARDWARE_VARIANTS`: **31 linh kiện**, phủ 29/32 model trong `public/models` (3 file `Decorative_model` chưa dùng; nhóm case dựng sẵn đã bị gỡ). 12 bước lắp ráp nhận linh kiện theo **`tag`** chứ không theo `id`, nên biến thể mới dùng được ngay mà không phải sửa `assemblyPlan.js`. Không còn nhóm carry-only: **mọi linh kiện đều lắp được** vào đúng bước của nó.
+- **Tên linh kiện trên từng bước** (`stepPartNames` trong `assemblyPlan.js`): mỗi bước tiêu thụ linh kiện sẽ hiện tên thật của **một model cụ thể** lấy từ danh mục, kèm số lượng nếu bước cần nhiều (bước 5 → “G.SKILL Trident Z RGB 16GB × 2”). Trước đây bước 4 chỉ ghi “lắp tản khí”, bước 7 chỉ ghi “lắp bộ nguồn” — người mới lắp máy không biết phải đi tìm món nào trên bàn. Vì tên được tra ra từ danh mục sống nên không bao giờ lệch với danh sách model.
 - **`hardwareCategories.js`**: tách riêng để `hardware.js` và `hardwareVariants.js` cùng dùng mà không import vòng.
 - **`ModelFit.js`** (`buildFittedModel` + `computeFlatAlignment`): tự động
   1. đo bounding box gốc của model,
   2. chọn trục **mỏng nhất làm trục dọc** → linh kiện luôn *nằm ngang*, không bao giờ đứng bằng mũi,
   3. chọn trục **dài nhất làm trục X** → cạnh dài nằm song song với bàn,
   4. chọn phép hoán trục **ít xoay nhất** (kèm ưu tiên giữ mặt "ngửa lên") để model vốn đã nằm phẳng không bị lật,
-  5. scale về `realSize`, canh giữa theo X/Z và đặt sát mặt bàn (minY = 0).
+  5. scale về kích thước thật: `realDims` nếu có (**theo từng trục**), nếu không mới dùng `realSize` (đồng nhất), rồi canh giữa theo X/Z và đặt sát mặt bàn (minY = 0).
+
+   Thứ tự các node rất quan trọng: `root → scaleGroup → alignGroup → model`. Node scale **bao quanh** node xoay, nên phép scale theo trục được áp dụng trên hệ đã căn (trục X = cạnh dài nhất, Y = mỏng nhất, Z = phần còn lại) chứ không phải trên trục gốc của file. Nếu đảo hai node này, giá trị thật sẽ bị gán nhầm trục và mọi linh kiện lệch tỉ lệ.
 - **`shelfLayout.js`** (`getShelfLayout`, `getTableObstacle`): hình học bàn và vị trí từng linh kiện. Chiều rộng bàn bị giới hạn ở `maxWidth` 1,3 m nên số hàng là `rowCount()`, **phần dài nhất xếp vào hàng đang ngắn nhất** (first-fit-decreasing) để các hàng cân nhau và bàn không bị một linh kiện dài kéo giãn; mỗi hàng nằm trong một dải cách nhau `rowGap`. Chiều dài bàn **tự kéo dài** theo hàng dài nhất. Kết quả dùng chung cho `Room.js` (dựng bàn), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm). Hiện tại: bàn **2,38 × 1,10 m, 3 hàng, 31 linh kiện, không có mặt nào dưới 0,8 m**.
 
 Kích thước thực tế đang dùng:
@@ -132,6 +136,19 @@ Kích thước thực tế đang dùng:
 | Nguồn Aerocool MasterWatt 650W | 0.15 m | ATX 150 × 140 × 86 mm |
 | Card đồ họa RTX 3090 FE | 0.313 m | 313 mm dài |
 | Card đồ họa RX 480 | 0.24 m | 240 mm dài |
+
+Cột `realSize` ở trên chỉ là **dự phòng**. Kích thước thật theo từng trục nằm ở `hardwareDims.js`:
+
+| Loại | Dài × Rộng × Dày | Ghi chú |
+|------|-------------------|---------|
+| Motherboard ATX | 305 × 244 × 45 mm | 45 mm là gồm tản nhiệt VRM |
+| Motherboard mATX | 244 × 244 × 45 mm | |
+| CPU | 40 × 40 × 5 mm | mặt IHS |
+| Tản khí tháp | 155 × 120 × 110 mm | kèm quạt |
+| RAM DDR4 | 133,4 × 45 × 7 mm | 7 mm là bề dày PCB, 45 mm gồm tản |
+| SSD 2,5" | 100 × 70 × 7 mm | |
+| Nguồn ATX | 150 × 150 × 86 mm | |
+| Card đồ họa | 313 × 130 × 52 mm | dài × cao × dày |
 
 ### 4.1. Placeholder thùng máy tính (Build Mode)
 `createComputerCase3DGroup()` trong `Room.js` dựng thùng ATX mid-tower rỗng bằng hình khối thủ tục với kích thước vỏ thật **21 × 48 × 45 cm**. Toàn bộ số đo nằm trong **`caseLayout.js`** (nguồn sự thật duy nhất) nên vật thể trong phòng và Build Zone không bao giờ lệch nhau:
@@ -164,7 +181,16 @@ Hai điểm dễ sai khác, đã có test chặn (`verify-placement.mjs`):
 
 - **`buildFittedModel` đặt linh kiện nằm trên `y = 0`** và chỉ canh giữa theo X/Z, đồng thời offset được bake vào `position` của chính group gốc. Nên **không** suy ra vị trí ngồi bằng đại số box → phải đo: `_centreOnAnchor()` đặt holder về gốc rồi lấy tâm `Box3` thật. Lỗi này làm card 44 mm nằm lệch 22 mm so với vị trí đã duyệt trong `caseLayout.js`.
 - **Kẹp (clamp) ghost trong thùng** dùng `centre + half` của bounding box **đã gắn mount**, đo trong **case-local** (`Box3` trả về world-space, mà thùng lại xoay −90°). Offset tâm/half được đo **một lần cho mỗi zone** (`_applyGhostMount`) để không phải duyệt bounding box mỗi lần rê chuột.
+
+Ba điểm dễ sai nữa, đều đã có test chặn (`verify-placement.mjs`):
+
+- **Ốc phải mỗi lần bấm chỉ vặn đúng một con.** `hitScrew` đánh dấu `driven` sau khi vặn và bỏ qua con đó về sau; nếu không, "con gần con trỏ nhất" vẫn thắng dù nó đã vặn rồi, nên bấm một chỗ là xong cả bộ. Con đã vặn cũng **giữ nguyên ở trạng thái đã vặn** (thu nhỏ + tắt vòng sáng) thay vì bật lại 100%, vì nếu không người chơi thấy như không có gì xảy ra.
+- **`hideScrews` phải gỡ khỏi `caseRoot`.** Nhóm ốc được thêm vào `caseRoot` (nơi chứa toàn bộ linh kiện trong thùng) nên phải gỡ khỏi đúng parent đó. Gỡ nhầm `pivot` là lỗi không hiện lỗi gì nhưng nhóm ốc **vẫn nằm trong scene** — đúng triệu chứng “bấm xong ốc vẫn còn”. `removePart` (dùng cho `reset()`) cũng dính lỗi này.
 - Ghost chỉ chạy theo con trỏ khi `BuildModeUI.ghostArmed` đúng: đang siết ốc, bôi keo, ấn linh kiện, cắm cáp hay bấm nguồn thì ghost **ẩn đi**, tránh bay ra ngoài thùng.
+
+### 4.3. Xoay 3 trục cho máy đã lắp ráp
+
+Máy đã lắp ráp **không còn cờ `noTilt`**, nên có thể xoay cả 3 trục. Chuột chỉ cho 2 trục (yaw/pitch), nên **lăn chuột giữ lúc đang quan sát** sẽ xoay trục roll. Khi cất máy, `Game.rememberAssembledPose()` ghi lại `itemRotation` của tay rồi `parkAssembledPC()` dùng pose đó, và lúc cầm lại thì khôi phục đúng pose cũ — nên máy không bị “bật dậy” mỗi lần cất. `noTilt` vẫn còn cho **một linh kiệt rời** để không bị nghiêng nằm sấp trong tay.
 
 ### 4.2. Hệ thống Build Mode lắp ráp 12 bước
 | File | Vai trò |

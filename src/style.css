@@ -1150,6 +1150,55 @@ body, html {
   margin-bottom: 10px;
 }
 
+.build-step-parts {
+  margin: 10px 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.build-step-parts-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fbbf24;
+  margin-bottom: 6px;
+}
+
+.build-step-part-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 3px 0;
+}
+
+.build-step-part-tag {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #0f172a;
+  background: #fcd34d;
+}
+
+.build-step-part-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fde68a;
+}
+
+.build-step-part-alt {
+  font-size: 10px;
+  color: #a3a3a3;
+  margin-left: auto;
+}
+
 .build-step-tip {
   font-size: 11.5px;
   line-height: 1.5;

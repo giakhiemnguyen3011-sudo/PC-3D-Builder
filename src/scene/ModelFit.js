@@ -84,10 +84,26 @@ export function computeFlatAlignment(size) {
 /**
  * Normalises a GLB scene to real-world metres and returns a group whose origin
  * sits at the centre of the footprint with the item resting on y = 0.
+ *
+ * Sizing comes in two flavours:
+ *   realSize    - uniform scale so the longest edge is this many metres. Keeps
+ *                 whatever proportions the downloader happened to author, which
+ *                 is why two models of the same part can disagree: a DIMM from
+ *                 one site is 133 x 3.5 x 31 mm and the "same" DIMM from
+ *                 another is 2085 x 2017 x 5017 mm.
+ *   realDims    - `{ length, width, height }` in metres, applied per axis after
+ *                 the flat alignment. Every variant of a part then normalises to
+ *                 the same true shape, so a RAM stick is always a DIMM
+ *                 regardless of how its source file was built.
+ *
+ * The three values are given in the part's OWN terms (longest / middle /
+ * thinnest) and matched to the aligned axes, so the caller does not have to know
+ * which native axis the downloader put where.
  */
 export function buildFittedModel(model, options = {}) {
   const {
     realSize = 0.15,
+    realDims = null,
     minSize = 0,
     maxSize = Number.POSITIVE_INFINITY,
     flat = true
@@ -97,24 +113,49 @@ export function buildFittedModel(model, options = {}) {
   const nativeMax = Math.max(nativeSize.x, nativeSize.y, nativeSize.z) || 1;
 
   const target = Math.min(Math.max(realSize, minSize), maxSize);
-  const scale = target / nativeMax;
+  const uniformScale = target / nativeMax;
 
   model.position.set(-nativeCenter.x, -nativeCenter.y, -nativeCenter.z);
 
-  const scaleGroup = new THREE.Group();
-  scaleGroup.scale.setScalar(scale);
-  scaleGroup.add(model);
-
+  // The alignment rotation lives INSIDE the scale node, so a per-axis scale is
+  // expressed in the part's own terms (longest / middle / thinnest) rather than
+  // in whichever native axes the downloader happened to author.
   const alignGroup = new THREE.Group();
   if (flat) alignGroup.quaternion.copy(computeFlatAlignment(nativeSize));
-  alignGroup.add(scaleGroup);
+  alignGroup.add(model);
 
-  alignGroup.updateMatrixWorld(true);
-  const alignedBox = new THREE.Box3().setFromObject(alignGroup);
+  const scaleGroup = new THREE.Group();
+  scaleGroup.add(alignGroup);
+
+  let scale = uniformScale;
+  if (realDims) {
+    // After the flat alignment the local X axis is the longest edge, Y is the
+    // thinnest and Z is the remainder - that is exactly the order the caller
+    // describes its part in.
+    scaleGroup.updateMatrixWorld(true);
+    const aligned = new THREE.Box3().setFromObject(alignGroup).getSize(new THREE.Vector3());
+    const wanted = [
+      realDims.length ?? aligned.x,
+      realDims.height ?? realDims.thickness ?? aligned.y,
+      realDims.width ?? aligned.z
+    ];
+    const perAxis = [
+      wanted[0] / (aligned.x || 1),
+      wanted[1] / (aligned.y || 1),
+      wanted[2] / (aligned.z || 1)
+    ];
+    scaleGroup.scale.set(perAxis[0], perAxis[1], perAxis[2]);
+    scale = perAxis[0];
+  } else {
+    scaleGroup.scale.setScalar(uniformScale);
+  }
+
+  scaleGroup.updateMatrixWorld(true);
+  const alignedBox = new THREE.Box3().setFromObject(scaleGroup);
   const alignedSize = alignedBox.getSize(new THREE.Vector3());
 
   const root = new THREE.Group();
-  root.add(alignGroup);
+  root.add(scaleGroup);
   root.position.set(
     -alignedBox.min.x - alignedSize.x / 2,
     -alignedBox.min.y,

@@ -271,13 +271,17 @@ export class Game {
       tag: 'Assembled PC',
       categoryKey: 'motherboard',
       isAssembled: true,
-      // upright only: yaw is allowed, pitch and roll are not
-      noTilt: true,
+      // free-standing: it can be turned on all three axes, so it carries no
+      // noTilt constraint. A single loose part keeps noTilt so it cannot be
+      // tipped onto its side in the hand.
       realSize: Math.max(size.y, 0.2),
       prebuilt: group,
       prebuiltSizeY: size.y,
       installedParts: result.parts,
-      home: { position: anchor.clone(), yaw }
+      // `yaw` is the resting pose. Rotating the machine updates `pose`, so
+      // putting it back on the bench returns it the way the player left it.
+      home: { position: anchor.clone(), yaw },
+      pose: { x: 0, y: yaw, z: 0 }
     };
 
     // Tag the group and every mesh, so a raycast hitting any child resolves
@@ -308,9 +312,29 @@ export class Game {
     if (group.parent !== this.scene) this.scene.add(group);
     group.visible = true;
     group.position.copy(pc.home.position);
-    group.rotation.set(0, pc.home.yaw, 0);
+    // keep whatever three-axis pose the player left it in
+    const pose = pc.pose || pc.home;
+    group.rotation.set(pose.x || 0, pose.y ?? pc.home.yaw, pose.z || 0);
     group.updateMatrixWorld(true);
     this.assembledPC = pc;
+  }
+
+  /**
+   * Remembers the machine's orientation so parking it does not snap it upright.
+   *
+   * While held, the rotation lives on the hand's `rotationPivot` (the group
+   * itself is zeroed on pick-up), so the hand's current item rotation is what has
+   * to be carried over.
+   */
+  rememberAssembledPose(pc) {
+    if (!pc?.prebuilt) return;
+    const rot = this.heldItemManager?.itemRotation;
+    if (rot) {
+      pc.pose = { x: rot.x || 0, y: rot.y || 0, z: rot.z || 0 };
+    } else {
+      const e = pc.prebuilt.rotation;
+      pc.pose = { x: e.x, y: e.y, z: e.z };
+    }
   }
 
   handleWorldInteract(object, hit) {
@@ -328,7 +352,9 @@ export class Game {
       // Left Click drops/places the held item at the crosshair intersection
       if (hit && hit.point) {
         if (held.isAssembled) {
+          this.rememberAssembledPose(held);
           this.parkAssembledPC(held);
+
           this.heldItemManager.clearHeldItem();
           return;
         }
@@ -387,12 +413,15 @@ export class Game {
 
   handleStowItem() {
     // The finished machine is never stowed - it only lives on the bench or in hand
-    if (this.heldItemManager.getHeldItem()?.isAssembled) {
-      this.parkAssembledPC(this.heldItemManager.getHeldItem());
+    const heldMachine = this.heldItemManager.getHeldItem();
+    if (heldMachine?.isAssembled) {
+      this.rememberAssembledPose(heldMachine);
+      this.parkAssembledPC(heldMachine);
       this.heldItemManager.clearHeldItem();
       this.showToast('Máy tính đã lắp ráp được đặt lại lên bàn.');
       return;
     }
+
     // If inventory is open: E drops selected item
     if (this.inventoryUI.isOpen) {
       if (this.inventoryUI.selectedItem) {

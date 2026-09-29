@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadModelCopy } from '../scene/ModelCache.js';
+import { realDimsFor } from '../data/hardwareDims.js';
 import { sounds } from '../audio/SoundEffects.js';
 import { buildFittedModel } from '../scene/ModelFit.js';
 
@@ -26,7 +27,7 @@ export class HeldItemManager {
 
     // Inspection state
     this.isInspecting = false;
-    this.itemRotation = { x: 0, y: 0 };
+    this.itemRotation = { x: 0, y: 0, z: 0 };
 
     this.setupMouseEvents();
   }
@@ -70,15 +71,34 @@ export class HeldItemManager {
         this.itemRotation.y += movementX * 0.009;
         this.itemRotation.x += movementY * 0.009;
 
-        // Upright-only items (the finished machine) may spin, never tip over
+        // Upright-only items (a single hard part) may spin, never tip over.
+        // A free-standing object such as the finished machine has no such
+        // constraint and keeps all three axes.
         if (this.heldItemData.noTilt) this.itemRotation.x = 0;
 
         // Apply rotation to pivot
         this.rotationPivot.rotation.x = this.itemRotation.x;
         this.rotationPivot.rotation.y = this.itemRotation.y;
+        this.rotationPivot.rotation.z = this.itemRotation.z;
       }
     });
+
+    // Roll cannot come from a 2D mouse, so the scroll wheel takes the third
+    // axis while inspecting. This is what lets the finished PC be turned on
+    // all three axes, which a mouse alone cannot express.
+    window.addEventListener('wheel', e => {
+      if (!this.isInspecting || !this.heldItemData) return;
+      e.preventDefault();
+      const step = this.heldItemData.noTilt ? 0 : -Math.sign(e.deltaY) * 0.12;
+      this.itemRotation.z += step;
+      this.rotationPivot.rotation.set(
+        this.itemRotation.x,
+        this.itemRotation.y,
+        this.itemRotation.z
+      );
+    }, { passive: false });
   }
+
 
   showInspectHint(show) {
     let hintEl = document.getElementById('inspect-hint');
@@ -88,11 +108,15 @@ export class HeldItemManager {
       document.body.appendChild(hintEl);
     }
     if (show && this.heldItemData) {
-      hintEl.textContent = `🔍 Đang quan sát ${this.heldItemData.name} • Rê chuột để xoay 360°`;
+      // Roll needs a second axis the mouse cannot give, so the hint says so.
+      hintEl.textContent = this.heldItemData.noTilt
+        ? `🔍 Đang quan sát ${this.heldItemData.name} • Rê chuột để xoay 360°`
+        : `🔍 Đang quan sát ${this.heldItemData.name} • Rê chuột để xoay • Lăn chuột để xoay ngang`;
       hintEl.classList.add('active');
     } else {
       hintEl.classList.remove('active');
     }
+
   }
 
   holdItem(itemData) {
@@ -106,6 +130,7 @@ export class HeldItemManager {
       // readability floor so they stay visible in the hand.
       const { group, size } = buildFittedModel(cloned, {
         realSize: itemData.realSize,
+        realDims: realDimsFor(itemData),
         minSize: 0.05,
         maxSize: 0.34,
         flat: true
@@ -128,8 +153,19 @@ export class HeldItemManager {
       holder.position.y = -itemData.prebuiltSizeY / 2 || 0;
       this.rotationPivot.add(holder);
       this.setDefaultPose();
+      // Picking it back up restores the pose it was parked in, so the two paths
+      // (E and left-click) agree and the machine does not jump.
+      if (itemData.pose) {
+        this.itemRotation = { ...itemData.pose };
+        this.rotationPivot.rotation.set(
+          this.itemRotation.x,
+          this.itemRotation.y,
+          this.itemRotation.z
+        );
+      }
       return;
     }
+
 
     // One shared parse per model file: by the time a part reaches the hand it is
     // almost always already on the bench, so this is a clone.
@@ -138,11 +174,12 @@ export class HeldItemManager {
     });
   }
 
-  /** Inspection pose. `noTilt` items (the finished PC) may only spin on Y. */
+  /** Inspection pose. `noTilt` parts (a single loose item) stay upright. */
   setDefaultPose() {
-    this.itemRotation = { x: this.heldItemData?.noTilt ? 0 : 0.15, y: -0.35 };
+    this.itemRotation = { x: this.heldItemData?.noTilt ? 0 : 0.15, y: -0.35, z: 0 };
     this.rotationPivot.rotation.set(this.itemRotation.x, this.itemRotation.y, 0);
   }
+
 
   clearHeldItem() {
     this.showInspectHint(false);

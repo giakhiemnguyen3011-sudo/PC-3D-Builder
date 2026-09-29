@@ -190,3 +190,42 @@ export function stepAccepts(step, item) {
 export function getStep(stepNumber) {
   return ASSEMBLY_STEPS.find(s => s.step === stepNumber) || null;
 }
+
+/**
+ * The concrete parts a step calls for, as display names.
+ *
+ * A beginner following "Bôi keo tản nhiệt & lắp tản khí" has no way to know
+ * that means "the CPU Cooler" and that they have to go and find it on the bench.
+ * Steps that consume a tag are given one example part name each, resolved from
+ * the live catalogue so the label can never drift from the model list.
+ *
+ * @param {object} step
+ * @param {Array} catalogue  the hardware items
+ * @returns {Array<{name: string, tag: string, count: number, icon: string}>}
+ */
+export function stepPartNames(step, catalogue) {
+  if (!step || !catalogue) return [];
+  const out = [];
+
+  for (const rule of step.accepts || []) {
+    const matches = catalogue.filter(item =>
+      rule.startsWith('tag:')
+        ? (item.tag || '').toLowerCase() === rule.slice(4).toLowerCase()
+        : rule === item.id
+    );
+    if (!matches.length) continue;
+
+    const tag = matches[0].tag;
+    const count = step.need || 1;
+    out.push({
+      name: matches[0].name,
+      tag,
+      count,
+      // a count of two reads better than repeating the same name twice
+      label: count > 1 ? `${matches[0].name} × ${count}` : matches[0].name,
+      variants: matches.length
+    });
+  }
+
+  return out;
+}

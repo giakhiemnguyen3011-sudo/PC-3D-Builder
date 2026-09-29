@@ -244,8 +244,11 @@ export const CASE_ZONES = {
     // 313mm card hangs from the rear slots, so its centre sits forward of centre
     anchor: [TRAY.face + 0.062, REAR.slots.top - 0.009, BOARD.z0 + 0.157],
     size: [0.112, 0.05, 0.313],
-    // card hangs nose-forward, fans down, backplate up towards the glass
-    mount: { long: [0, 0, 1], thin: [0, 1, 0] },
+    // card hangs nose-forward: its 313mm length runs into the case, the 52mm
+    // body thickness faces the glass, and the 130mm height stands upright with
+    // the fans down. Mapping the thin axis vertical here (as this once did)
+    // laid the card on its side.
+    mount: { long: [0, 0, 1], thin: [1, 0, 0] },
     face: [0, 1, 0],
     faceLift: 0.032,
     screws: 2,
@@ -278,25 +281,40 @@ export const CASE_ZONES = {
   }
 };
 
-/** Builds the quaternion that stands a fitted part up in its mount orientation. */
+/**
+ * Builds the quaternion that stands a fitted part up in its mount orientation.
+ *
+ * `zone.mount` maps the part's three edges onto case axes. The older form named
+ * only two - `long` and `thin` - and the third was derived. That is ambiguous
+ * for parts like a graphics card, where naming all three is the only way to say
+ * "long edge into the case, fan face down, backplate to the glass", so the
+ * three-axis form is preferred and the two-axis form still works.
+ */
 export function mountQuaternion(zone) {
   const m = zone.mount;
   if (!m) return null;
-  const long = new THREE.Vector3(...m.long).normalize();
-  const thin = new THREE.Vector3(...m.thin).normalize();
-  const spare = new THREE.Vector3().crossVectors(long, thin).normalize();
 
-  const images = new Array(3);
-  images[0] = long.clone();   // part's longest edge (local +X)
-  images[1] = thin.clone();   // part's thinnest axis (local +Y)
-  images[2] = spare.clone();  // part's mid axis (local +Z)
+  // the part's own edges, longest first
+  const edges = m.edges
+    ? {
+        x: new THREE.Vector3(...m.edges.long).normalize(),
+        y: new THREE.Vector3(...m.edges.thin).normalize(),
+        z: new THREE.Vector3(...m.edges.width).normalize()
+      }
+    : {
+        x: new THREE.Vector3(...m.long).normalize(),
+        y: new THREE.Vector3(...m.thin).normalize(),
+        z: new THREE.Vector3().crossVectors(
+          new THREE.Vector3(...m.long),
+          new THREE.Vector3(...m.thin)
+        ).normalize()
+      };
 
-  const basis = new THREE.Matrix4().makeBasis(images[0], images[1], images[2]);
-  if (basis.determinant() < 0) images[2].negate();
-
-  return new THREE.Quaternion().setFromRotationMatrix(
-    new THREE.Matrix4().makeBasis(images[0], images[1], images[2])
-  );
+  // A part whose edges are not mutually perpendicular (a bent or lathed model)
+  // would collapse here, so re-orthogonalise before building the basis.
+  const basis = new THREE.Matrix4().makeBasis(edges.x, edges.y, edges.z);
+  if (Math.abs(basis.determinant()) < 1e-6) return null;
+  return new THREE.Quaternion().setFromRotationMatrix(basis);
 }
 
 

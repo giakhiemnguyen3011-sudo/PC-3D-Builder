@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadModelCopy } from './ModelCache.js';
+import { realDimsFor } from '../data/hardwareDims.js';
 import { buildFittedModel } from './ModelFit.js';
 import { createComputerCase3DGroup } from './Room.js';
 import { CASE, CASE_REF, CASE_ZONES, CASE_BOUNDS, mountQuaternion } from './caseLayout.js';
@@ -652,7 +653,7 @@ export class BuildScene {
     const keys = zoneId ? [zoneId] : [...this.screwGroups.keys()];
     keys.forEach(key => {
       const entry = this.screwGroups.get(key);
-      if (entry) this.pivot.remove(entry.group);
+      if (entry) this.caseRoot.remove(entry.group);
       this.screwGroups.delete(key);
     });
     this.screwHolders = [];
@@ -671,6 +672,12 @@ export class BuildScene {
 
   /**
    * Drive the fastener under the cursor.
+   *
+   * Each screw is a distinct target: once driven it is flagged and can no longer
+   * be hit, so the count goes down by exactly one per click. Previously the
+   * nearest screw won regardless of whether it had already been driven, which
+   * let one click site empty the whole pattern.
+   *
    * @returns 'tightened' | 'miss' | 'none'
    */
   hitScrew(clientX, clientY, zoneId) {
@@ -685,6 +692,8 @@ export class BuildScene {
     let best = null;
     let bestDist = Infinity;
     entry.group.children.forEach(holder => {
+      // already driven: not a target any more
+      if (holder.userData.driven) return;
       const world = new THREE.Vector3();
       holder.getWorldPosition(world);
       const ndc = world.project(this.camera);
@@ -700,6 +709,7 @@ export class BuildScene {
     const radius = entry.remaining === 1 ? 90 : 36;
     if (bestDist > radius) return 'miss';
 
+    best.userData.driven = true;
     best.userData.driving = 0.0001;
     entry.remaining--;
     if (entry.remaining === 0) this.hideScrews(zoneId);
@@ -803,6 +813,7 @@ export class BuildScene {
       }
       const { group } = buildFittedModel(copy, {
         realSize: item.realSize,
+        realDims: realDimsFor(item),
         flat: true
       });
       return group;
@@ -823,7 +834,7 @@ export class BuildScene {
   removePart(partKey) {
     const entry = this.placedParts.get(partKey);
     if (!entry) return false;
-    this.pivot.remove(entry.group);
+    this.caseRoot.remove(entry.group);
     this.placedParts.delete(partKey);
     if (this.lockedZone === entry.zoneId) this.lockedZone = null;
     return true;
@@ -887,7 +898,7 @@ export class BuildScene {
       else this.camera.lookAt(this.lookGoal);
     }
 
-    // Fasteners spin in, then sink flush
+    // Fasteners spin in, then sink flush and stay sunk
     for (let i = 0; i < this.screwHolders.length; i++) {
       const obj = this.screwHolders[i];
       const data = obj.userData;
@@ -897,9 +908,16 @@ export class BuildScene {
       obj.scale.setScalar(1 - data.driving * 0.2);
       if (data.driving >= 1) {
         delete data.driving;
-        obj.scale.setScalar(1);
+        // A driven screw is finished, not pending: it shrinks to a small seated
+        // head and its halo is removed, so it stops reading as a click target.
+        // Leaving it at full size made it look like the click had done nothing.
+        // Only this screw's own halo is hidden - the head and halo materials are
+        // shared across all screws, so they must not be mutated.
+        obj.scale.setScalar(0.55);
+        if (obj.children[1]) obj.children[1].visible = false;
       }
     }
+
 
     // Zone highlight pulse, plus a bright flash on a successful placement
     const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
