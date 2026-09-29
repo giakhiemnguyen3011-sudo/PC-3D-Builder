@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { HARDWARE_ITEMS } from '../data/hardware.js';
+import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
 import { buildFittedModel } from './ModelFit.js';
 import { getShelfLayout } from './shelfLayout.js';
 
@@ -12,7 +12,7 @@ export class ShelfHardware {
   constructor(scene) {
     this.scene = scene;
     this.group = new THREE.Group();
-    this.items = [...HARDWARE_ITEMS];
+    this.items = [...ALL_HARDWARE_ITEMS];
     this.shelfMeshes = new Map();
     this.loader = new GLTFLoader();
     this.interactables = [];

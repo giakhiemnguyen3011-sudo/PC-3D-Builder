@@ -291,17 +291,32 @@ export class BuildModeUI {
   }
 
   // ------------------------------------------------------------- pointers
+  /**
+   * The carried part only follows the cursor while the step is actually a
+   * placement. On fastener, paste, press, cable, display and power steps the
+   * cursor is driving something else, and a part swimming around the canvas is
+   * both misleading and the reason it appeared to escape the chassis.
+   */
+  get ghostArmed() {
+    if (!this.selectedItem) return false;
+    const step = this.activeStep();
+    if (!step || !step.need) return false;
+    if (this.scene.screwsFor(step.zone) > 0) return false;
+    if (this.pendingPress) return false;
+    return true;
+  }
+
   onPointerMove(e) {
     if (!this.scene) return;
     this.scene.setPointer(e.clientX, e.clientY);
-    this.scene.updateGhost(this.activeStep()?.zone);
+    this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
     this.updateCursorHint();
   }
 
   onPointerLeave() {
     if (!this.scene) return;
     this.scene.clearPointer();
-    this.scene.updateGhost(this.activeStep()?.zone);
+    this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
     this.setZoneHint(null);
   }
 
@@ -671,7 +686,7 @@ export class BuildModeUI {
     if (!step) return;
     await this.scene.setGhostItem(item);
     this.scene.setZoneState(step.zone, 'active');
-    this.scene.updateGhost(step.zone);
+    this.scene.updateGhost(step.zone, this.ghostArmed);
   }
 
   updateCursorHint() {

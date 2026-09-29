@@ -306,16 +306,20 @@ export class Room {
     edge.castShadow = true;
     this.group.add(edge);
 
-    // ---- lower shelf (tier 1 surface) ----
-    const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.06, table.shelfThickness, length - 0.1),
-      topMat
-    );
-    shelf.position.set(tx, table.shelfHeight, tz);
-    shelf.castShadow = true;
-    shelf.receiveShadow = true;
-    this.group.add(shelf);
-    this.surfaces.push(shelf);
+    // ---- lower shelves (tier 1 and 2 surfaces) ----
+    // Drawn from the layout so adding a tier to shelfLayout.js is enough.
+    table.tierSurfaces.slice(1).forEach(surfaceY => {
+      const board = new THREE.Mesh(
+        new THREE.BoxGeometry(width - 0.06, table.shelfThickness, length - 0.1),
+        topMat
+      );
+      board.position.set(tx, surfaceY - table.shelfThickness / 2, tz);
+      board.castShadow = true;
+      board.receiveShadow = true;
+      this.group.add(board);
+      this.surfaces.push(board);
+    });
+
 
     // ---- legs ----
     const legH = table.height - table.topThickness;

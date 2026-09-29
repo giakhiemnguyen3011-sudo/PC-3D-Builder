@@ -1,4 +1,4 @@
-import { HARDWARE_ITEMS } from '../data/hardware.js';
+import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
 
 /**
  * Single source of truth for the long white wooden parts table.
@@ -8,7 +8,9 @@ import { HARDWARE_ITEMS } from '../data/hardware.js';
  * its length when more hardware needs room, so nobody has to hand-tune a second
  * set of numbers.
  *
- * Tier 0 is the table top (work height 0.82m), tier 1 the lower shelf (0.30m).
+ * Tier 0 is the table top (work height 0.82m). Tiers 1 and 2 are the two lower
+ * shelves (0.56m and 0.30m), which is what keeps the bench a sensible length
+ * once the catalogue carries every model in public/models.
  * `length` in a footprint runs along the table, `depth` across it.
  */
 const TABLE_BASE = {
@@ -23,12 +25,12 @@ const TABLE_BASE = {
   shelfHeight: 0.3,
   shelfThickness: 0.03,
   // surface height of each tier; the top tier is the thick table top, the
-  // lower tier is the thin shelf board
-  tierHeights: [0.82, 0.3],
-  tierSurfaces: [0.82, 0.315],
+  // lower tiers are thin shelf boards
+  tierHeights: [0.82, 0.56, 0.3],
+  tierSurfaces: [0.82, 0.575, 0.315],
   edgeMargin: 0.14,
   sideMargin: 0.12,
-  maxGap: 0.14
+  maxGap: 0.05
 };
 
 function buildTiers() {
@@ -39,7 +41,7 @@ function buildTiers() {
     entries: []
   }));
 
-  HARDWARE_ITEMS.filter(item => item.footprint).forEach(item => {
+  ALL_HARDWARE_ITEMS.filter(item => item.footprint).forEach(item => {
     const tierIndex = Math.min(Math.max(item.shelfTier || 0, 0), tiers.length - 1);
     tiers[tierIndex].entries.push({ item, footprint: item.footprint });
   });

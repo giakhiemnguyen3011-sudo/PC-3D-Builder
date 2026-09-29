@@ -69,12 +69,23 @@ export class BuildScene {
     this.pivot = new THREE.Group();
     this.scene.add(this.pivot);
 
+    // caseRoot owns the ONE transform that turns the chassis so its glass side
+    // faces the viewer. Everything placed inside the case is authored in plain
+    // case-local coordinates and parented here, so a zone anchor in caseLayout.js
+    // always means the same point in the room, the case mesh and the part.
+    this.caseRoot = new THREE.Group();
+    this.caseRoot.rotation.y = -Math.PI / 2;
+    this.caseRoot.position.set(0, -CASE.feet, 0);
+    this.pivot.add(this.caseRoot);
+
     this.cameraGoal = new THREE.Vector3();
     this.lookGoal = new THREE.Vector3();
     this.cameraMoving = false;
 
     this._v1 = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
+    this._half = new THREE.Vector3();
+    this._centre = new THREE.Vector3();
     this._hit = new THREE.Vector3();
     this._screwAxis = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0) };
 
@@ -101,7 +112,7 @@ export class BuildScene {
     // Glows once the machine is powered on
     this.powerLight = new THREE.PointLight(0x38bdf8, 0, 0.6);
     this.powerLight.position.set(...CASE_ZONES.power.anchor);
-    this.pivot.add(this.powerLight);
+    this.caseRoot.add(this.powerLight);
   }
 
   // ----------------------------------------------------------------- case
@@ -110,10 +121,13 @@ export class BuildScene {
     this.caseGroup = built.caseGroup;
     this.sideGlass = built.sideGlass;
 
-    // Glass side towards the viewer: +X -> +Z, and no auto-rotation
-    this.caseGroup.rotation.y = -Math.PI / 2;
-    this.caseGroup.position.set(0, -CASE.feet, 0);
-    this.pivot.add(this.caseGroup);
+    // Glass side towards the viewer, and no auto-rotation. The turn lives on
+    // caseRoot, so the chassis itself keeps its authored case-local transform.
+    this.caseGroup.position.set(0, 0, 0);
+    this.caseGroup.quaternion.identity();
+    this.caseGroup.scale.set(1, 1, 1);
+    this.caseRoot.add(this.caseGroup);
+    this.pivot.updateMatrixWorld(true);
     this.caseGroup.traverse(child => {
       if (child.isMesh) {
         child.castShadow = false;
@@ -145,7 +159,7 @@ export class BuildScene {
       mesh.visible = false;
       mesh.renderOrder = 5;
       mesh.userData.zoneId = id;
-      this.pivot.add(mesh);
+      this.caseRoot.add(mesh);
       this.zoneMeshes.set(id, mesh);
       this.zoneList.push(mesh);
     });
@@ -200,21 +214,25 @@ export class BuildScene {
     else this.focusCase();
   }
 
-  /** Fit a case-local box to the viewport, then glide the camera there. */
+  /**
+   * Fit a case-local box to the viewport, then glide the camera there.
+   * The chassis is turned -90 degrees about Y to face the glass at you, so a
+   * case-local box has to be carried into pivot space before it means anything
+   * to the camera - otherwise the frame is fitted to the wrong axis.
+   */
   frameBox(box, margin) {
-    this.pivot.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().copy(this.pivot.matrixWorld).invert();
-    const local = new THREE.Box3();
+    this.caseRoot.updateMatrixWorld(true);
+    const world = new THREE.Box3();
     for (let i = 0; i < 8; i++) {
-      local.expandByPoint(this._v1.set(
+      world.expandByPoint(this._v1.set(
         i & 1 ? box.max.x : box.min.x,
         i & 2 ? box.max.y : box.min.y,
         i & 4 ? box.max.z : box.min.z
-      ).applyMatrix4(inv));
+      ).applyMatrix4(this.caseRoot.matrixWorld));
     }
 
-    const size = local.getSize(new THREE.Vector3());
-    const centre = local.getCenter(new THREE.Vector3());
+    const size = world.getSize(new THREE.Vector3());
+    const centre = world.getCenter(new THREE.Vector3());
     const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
     const tanH = tanV * Math.max(this.camera.aspect, 0.2);
     const dist =
@@ -276,14 +294,14 @@ export class BuildScene {
     this.pointerInside = false;
   }
 
-  /** Cursor position in pivot space, on the plane the camera looks at. */
+  /** Cursor position in case-local space, on the plane the camera looks at. */
   pointerWorld() {
     this.raycaster.setFromCamera(this.pointerNdc, this.camera);
     const normal = this._v2.set(0, 0, 1).applyQuaternion(this.camera.quaternion).negate();
     this.pointerPlane.setFromNormalAndCoplanarPoint(normal, this.lookGoal);
     if (!this.raycaster.ray.intersectPlane(this.pointerPlane, this._hit)) return null;
-    this.pivot.updateMatrixWorld(true);
-    return this.pivot.worldToLocal(this._hit.clone());
+    this.caseRoot.updateMatrixWorld(true);
+    return this.caseRoot.worldToLocal(this._hit.clone());
   }
 
   /**
@@ -341,6 +359,22 @@ export class BuildScene {
   }
 
   // ----------------------------------------------------------------- ghost
+  /**
+   * The interior of the chassis in case-local space. The ghost is clamped into
+   * this box (minus the part's own half-extent) so a carried part can never drift
+   * out through the panels while the cursor roams the canvas.
+   */
+  get caseInterior() {
+    if (!this._interior) {
+      const pad = CASE.sheet + 0.004;
+      this._interior = new THREE.Box3(
+        new THREE.Vector3(-CASE.width / 2 + pad, pad, -CASE.depth / 2 + pad),
+        new THREE.Vector3(CASE.width / 2 - pad, CASE.feet + CASE.height - pad, CASE.depth / 2 - pad)
+      );
+    }
+    return this._interior;
+  }
+
   setGhostItem(item) {
     this.clearGhost();
     if (!item) return Promise.resolve(false);
@@ -349,15 +383,26 @@ export class BuildScene {
       const holder = new THREE.Group();
       holder.add(fitted);
       holder.visible = false;
-      this.pivot.add(holder);
-      this.ghost = { item, group: holder, zoneId: null };
+      this.caseRoot.add(holder);
+
+      // Bounds and the centre offset are measured per zone in _applyGhostMount,
+      // once the mount turn is known.
+      this.ghost = {
+        item,
+        group: holder,
+        zoneId: null,
+        mountZone: null,
+        bounds: null,
+        centreOffset: new THREE.Vector3(),
+        half: new THREE.Vector3()
+      };
       return true;
     });
   }
 
   clearGhost() {
     if (this.ghost) {
-      this.pivot.remove(this.ghost.group);
+      this.caseRoot.remove(this.ghost.group);
       this.ghost = null;
     }
     if (this.activeZone) this.setZoneState(this.activeZone, 'active');
@@ -367,10 +412,50 @@ export class BuildScene {
     return !!(this.ghost && this.ghost.zoneId);
   }
 
-  /** Ghost tracks the cursor, magnetised onto the target zone when close. */
-  updateGhost(zoneId) {
+  /**
+   * Puts the ghost in its mount orientation for `zoneId` and measures where the
+   * part's centre and extents land in case-local space. Cached per zone so a
+   * pointer move never walks the model's bounding box.
+   */
+  _applyGhostMount(zoneId, zone) {
+    const ghost = this.ghost;
+    if (ghost.mountZone === zoneId) return;
+
+    const mount = mountQuaternion(zone);
+    if (mount) ghost.group.quaternion.copy(mount);
+    ghost.group.position.set(0, 0, 0);
+    ghost.group.updateMatrixWorld(true);
+
+    // A bounding box comes out in world space, and the chassis is turned -90
+    // degrees, so the corners are mapped back into the holder's parent frame -
+    // the same frame the zone anchor and the clamp live in.
+    const world = new THREE.Box3().setFromObject(ghost.group);
+    const toCase = new THREE.Matrix4().copy(ghost.group.parent.matrixWorld).invert();
+    const box = new THREE.Box3();
+    for (let i = 0; i < 8; i++) {
+      box.expandByPoint(this._v1.set(
+        i & 1 ? world.max.x : world.min.x,
+        i & 2 ? world.max.y : world.min.y,
+        i & 4 ? world.max.z : world.min.z
+      ).applyMatrix4(toCase));
+    }
+    ghost.bounds = box;
+    ghost.centreOffset.copy(box.getCenter(this._centre));
+    ghost.half.copy(box.getSize(this._half)).multiplyScalar(0.5);
+    ghost.mountZone = zoneId;
+  }
+
+  /**
+   * Ghost tracks the cursor, magnetised onto the target zone when close.
+   *
+   * `armed` is false for steps the cursor is not carrying a part through -
+   * tightening fasteners, spreading paste, pressing a part down, clicking a cable
+   * or the power button. Without it the part would swim around the canvas during
+   * those clicks, which is what made it look like it had escaped the case.
+   */
+  updateGhost(zoneId, armed = true) {
     if (!this.ghost) return;
-    if (!this.pointerInside) {
+    if (!armed || !zoneId || !this.pointerInside) {
       this.ghost.group.visible = false;
       this.ghost.zoneId = null;
       return;
@@ -378,18 +463,84 @@ export class BuildScene {
     const point = this.pointerWorld();
     if (!point) return;
 
+    const zone = CASE_ZONES[zoneId];
+    const snap = this.isOverZone(zoneId);
     this.ghost.group.visible = true;
-    if (this.isOverZone(zoneId)) {
-      this.ghost.group.position.set(...CASE_ZONES[zoneId].anchor);
+
+    // Orient the preview exactly as it will be seated, so the player reads the
+    // part the right way up from whatever camera angle they are at. The offset
+    // between the part's own origin and its centre is measured once per zone,
+    // not per pointer move.
+    this._applyGhostMount(zoneId, zone);
+
+    if (snap) {
+      this.ghost.group.position.set(...zone.anchor).sub(this.ghost.centreOffset);
       this.ghost.zoneId = zoneId;
       this.setZoneState(zoneId, 'active');
     } else {
       this.ghost.group.position.copy(point);
       // slight pull so the player feels the magnet without it teleporting
-      this.ghost.group.position.lerp(this._v1.fromArray(CASE_ZONES[zoneId].anchor), 0.16);
+      this.ghost.group.position.lerp(this._v1.fromArray(zone.anchor), 0.16);
       this.ghost.zoneId = null;
       this.setZoneState(zoneId, 'hint');
     }
+
+    this.clampGhostInside();
+  }
+
+  /**
+   * Keeps the whole carried part within the chassis walls.
+   *
+   * buildFittedModel rests the part on y = 0 and only centres it in x/z, so the
+   * part is not symmetric about the holder's origin and a plain half-extent
+   * clamp pushes it out through the roof. This uses the real rotated offset of
+   * the local bounding box instead.
+   */
+  clampGhostInside() {
+    if (!this.ghost) return;
+    const box = this.caseInterior;
+    const { centre, half } = this._mountedExtents();
+    const p = this.ghost.group.position;
+
+    // A part that cannot fit at any orientation is centred rather than shoved
+    // through a wall, which is what a naive clamp would do.
+    const axis = (v, lo, hi) => (lo > hi ? (lo + hi) / 2 : THREE.MathUtils.clamp(v, lo, hi));
+    p.x = axis(p.x, box.min.x - centre.x + half.x, box.max.x - centre.x - half.x);
+    p.y = axis(p.y, box.min.y - centre.y + half.y, box.max.y - centre.y - half.y);
+    p.z = axis(p.z, box.min.z - centre.z + half.z, box.max.z - centre.z - half.z);
+  }
+
+  /**
+   * The part occupies [position + centre - half, position + centre + half].
+   *
+   * `bounds` is measured with the holder already in its mount orientation, so
+   * this is a straight read: no further rotation of the extents is needed.
+   */
+  _mountedExtents() {
+    const g = this.ghost;
+    return { centre: g?.centreOffset || this._centre.set(0, 0, 0), half: g?.half || this._half.set(0, 0, 0) };
+  }
+
+  /**
+   * Centres a mounted part on `anchor`.
+   *
+   * buildFittedModel bakes an offset into the root's own position (it rests the
+   * part on y = 0 and centres it in x/z), and the mount turn rotates that
+   * offset, so working it out from the box algebra is easy to get wrong.
+   * Measuring the mounted holder is exact instead.
+   *
+   * The holder must already carry its mount rotation and be at the origin.
+   */
+  _centreOnAnchor(holder, anchor) {
+    holder.position.set(0, 0, 0);
+    holder.updateMatrixWorld(true);
+    const centre = new THREE.Box3().setFromObject(holder).getCenter(new THREE.Vector3());
+    holder.position.set(...anchor).sub(centre);
+  }
+
+  /** Half extent of the carried part along the case axes, after its mount turn. */
+  _mountedHalfExtent() {
+    return this._mountedExtents().half;
   }
 
   // ----------------------------------------------------------------- zones
@@ -479,7 +630,7 @@ export class BuildScene {
       this.screwHolders.push(holder);
     });
 
-    this.pivot.add(group);
+    this.caseRoot.add(group);
     this.screwGroups.set(zoneId, { group, remaining: Math.min(count, points.length), total: count });
   }
 
@@ -594,7 +745,7 @@ export class BuildScene {
       this.cableHolders.push(holder);
     });
 
-    this.pivot.add(group);
+    this.caseRoot.add(group);
     this.cableGroup = group;
   }
 
@@ -613,7 +764,7 @@ export class BuildScene {
   }
 
   hideCableTargets() {
-    if (this.cableGroup) this.pivot.remove(this.cableGroup);
+    if (this.cableGroup) this.caseRoot.remove(this.cableGroup);
     this.cableGroup = null;
     this.cableHolders = [];
   }
@@ -634,8 +785,9 @@ export class BuildScene {
 
       const holder = new THREE.Group();
       holder.add(fitted);
-      holder.position.set(...zone.anchor);
-      this.pivot.add(holder);
+      this._centreOnAnchor(holder, zone.anchor);
+      this.caseRoot.add(holder);
+
       this.placedParts.set(partKey, { item, zoneId, group: holder });
       this.lockedZone = zoneId;
       this.setZoneState(zoneId, 'locked');
@@ -798,12 +950,15 @@ export class BuildScene {
     this.setGlass(true, true);
     this.setPower(true);
 
-    this.pivot.updateMatrixWorld(true);
+    this.caseRoot.updateMatrixWorld(true);
+
+    // The finished machine keeps caseRoot's turn, so it walks into the room at
+    // the same orientation the builder saw through the glass.
     const assembled = new THREE.Group();
     assembled.name = 'assembledPC';
-    assembled.position.copy(this.pivot.position);
-    assembled.quaternion.copy(this.pivot.quaternion);
-    assembled.scale.copy(this.pivot.scale);
+    assembled.position.copy(this.caseRoot.position);
+    assembled.quaternion.copy(this.caseRoot.quaternion);
+    assembled.scale.copy(this.caseRoot.scale);
 
     const caseClone = this.caseGroup.clone(true);
     caseClone.position.copy(this.caseGroup.position);
@@ -832,8 +987,9 @@ export class BuildScene {
       holder.name = 'installedPart';
       assembled.add(holder);
       parts.push({ key, item: entry.item, zoneId: entry.zoneId });
-      this.pivot.remove(entry.group);
+      this.caseRoot.remove(entry.group);
     });
+
     this.placedParts.clear();
     this.lockedZone = null;
 
@@ -847,7 +1003,8 @@ export class BuildScene {
     this.clearParts();
     this.hideScrews();
     this.hideCableTargets();
-    if (this.caseGroup) this.pivot.remove(this.caseGroup);
+    if (this.caseRoot) this.pivot.remove(this.caseRoot);
+
     this.modelCache.clear();
     this.renderer.dispose();
     if (this.renderer.forceContextLoss) this.renderer.forceContextLoss();

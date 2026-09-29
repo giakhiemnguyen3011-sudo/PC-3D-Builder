@@ -107,14 +107,16 @@ Do các model xuất từ phần mềm 3D (Blender/Maya/3ds Max/Sketchfab) có �
 
 - **`realSize`** (mét) trong `hardware.js`: cạnh dài nhất thực tế của linh kiện. Mọi mesh được scale sao cho bounding box lớn nhất khớp đúng con số này → CPU thật sự nhỏ hơn bo mạch chủ, GPU dài hơn ổ cứng.
 - **`footprint: { length, depth }`** (mét): diện tích chỗ để trên kệ. `length` chạy dọc theo kệ, `depth` chạy ngang kệ. Dùng để tính khoảng cách và kéo dài kệ.
-- **`shelfTier`**: tầng kệ hiển thị (0 = dưới cùng).
+- **`shelfTier`**: tầng hiển thị. `0` = mặt bàn (0.82 m), `1` = kệ giữa (0.575 m), `2` = kệ dưới (0.315 m). Linh kiện to (bo mạch, card, case) để ở tầng 0 cho dễ với tay; linh kiện nhỏ để tầng 2.
+- **`ALL_HARDWARE_ITEMS`** = `HARDWARE_ITEMS` + `HARDWARE_VARIANTS`. Toàn bộ 33 model trong `public/models` (trừ 3 file `Decorative_model`) đã được đưa vào danh mục: 35 linh kiện. 12 bước lắp ráp nhận linh kiện theo **`tag`** chứ không theo `id`, nên các biến thể mới dùng được ngay mà không phải sửa `assemblyPlan.js`. Riêng nhóm `Case` là **carry-only**: bạn có thể cầm và xem, nhưng không bước nào lắp case vào case.
+- **`hardwareCategories.js`**: tách riêng để `hardware.js` và `hardwareVariants.js` cùng dùng mà không import vòng.
 - **`ModelFit.js`** (`buildFittedModel` + `computeFlatAlignment`): tự động
   1. đo bounding box gốc của model,
   2. chọn trục **mỏng nhất làm trục dọc** → linh kiện luôn *nằm ngang*, không bao giờ đứng bằng mũi,
   3. chọn trục **dài nhất làm trục X** → cạnh dài nằm song song với kệ,
   4. chọn phép hoán trục **ít xoay nhất** (kèm ưu tiên giữ mặt "ngửa lên") để model vốn đã nằm phẳng không bị lật,
   5. scale về `realSize`, canh giữa theo X/Z và đặt sát mặt kệ (minY = 0).
-- **`shelfLayout.js`** (`getShelfLayout`): tính ra hình học kệ và vị trí từng linh kiện — chia đều theo tầng, giới hạn khe hở tối đa, canh giữa, và **tự kéo dài kệ** nếu tổng chiều dài vượt quá. Kết quả được `Room.js` (dựng kệ), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm) dùng chung.
+- **`shelfLayout.js`** (`getShelfLayout`, `getTableObstacle`): tính ra hình học bàn và vị trí từng linh kiện — chia đều theo 3 tầng, giới hạn khe hở tối đa (`maxGap` 0.05 m), canh giữa, và **tự kéo dài bàn** nếu tổng chiều dài vượt quá. Kết quả được `Room.js` (dựng bàn + 2 kệ dưới theo `tierSurfaces`), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm) dùng chung.
 
 Kích thước thực tế đang dùng:
 
@@ -139,6 +141,30 @@ Kích thước thực tế đang dùng:
 - Tấm che nguồn (PSU shroud) kích thước **144 × 359 × 95 mm**, đủ chứa nguồn ATX 140 × 150 × 86 mm.
 - **Nắp kính cường lực** (tên `sideGlass`) + 4 núm vặn đi kèm để tháo ra thành một khối.
 - `{ xray: true }` biến toàn bộ vỏ thùng thành **trong suốt 50 %** (`transparent`, `depthWrite: false`) cho chế độ Build.
+
+#### 4.2. Một phép biến đổi duy nhất cho toàn bộ thùng (`caseRoot`)
+
+Thùng được xoay **−90° quanh Y** để mặt kính hướng về camera. Phép xoay đó nằm trên **`BuildScene.caseRoot`**, và **mọi** thứ đặt bên trong thùng đều là con của `caseRoot`:
+
+```
+pivot
+└── caseRoot      ← rotation.y = -90°, position.y = -CASE.feet   (phép biến đổi DUY NHẤT)
+    ├── caseGroup (thùng, giữ transform gốc case-local)
+    ├── zoneMeshes, screwGroups, cableGroup   (case-local)
+    ├── placedParts                            (case-local)
+    └── ghost                                  (case-local)
+```
+
+Mọi `anchor` trong `caseLayout.js` viết theo **case-local**. Trước đây các vùng được gắn thẳng vào `pivot` trong khi thùng lại xoay −90°, nên **vùng lệch tối đa 30 cm** và linh kiện lắp vào nằm sát cạnh thùng thay vì nằm trong thùng. Hai hàm phải nói đúng một hệ toạ độ:
+
+- `pointerWorld()` trả về **case-local** (dùng `caseRoot.worldToLocal`).
+- `frameBox(box)` nhận box case-local rồi đưa sang pivot-space qua `caseRoot.matrixWorld` trước khi tính khung camera.
+
+Hai điểm dễ sai khác, đã có test chặn (`verify-placement.mjs`):
+
+- **`buildFittedModel` đặt linh kiện nằm trên `y = 0`** và chỉ canh giữa theo X/Z, đồng thời offset được bake vào `position` của chính group gốc. Nên **không** suy ra vị trí ngồi bằng đại số box → phải đo: `_centreOnAnchor()` đặt holder về gốc rồi lấy tâm `Box3` thật. Lỗi này làm card 44 mm nằm lệch 22 mm so với vị trí đã duyệt trong `caseLayout.js`.
+- **Kẹp (clamp) ghost trong thùng** dùng `centre + half` của bounding box **đã gắn mount**, đo trong **case-local** (`Box3` trả về world-space, mà thùng lại xoay −90°). Offset tâm/half được đo **một lần cho mỗi zone** (`_applyGhostMount`) để không phải duyệt bounding box mỗi lần rê chuột.
+- Ghost chỉ chạy theo con trỏ khi `BuildModeUI.ghostArmed` đúng: đang siết ốc, bôi keo, ấn linh kiện, cắm cáp hay bấm nguồn thì ghost **ẩn đi**, tránh bay ra ngoài thùng.
 
 ### 4.2. Hệ thống Build Mode lắp ráp 12 bước
 | File | Vai trò |

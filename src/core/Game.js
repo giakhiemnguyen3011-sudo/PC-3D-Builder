@@ -7,7 +7,7 @@ import { HeldItemManager } from '../controls/HeldItemManager.js';
 import { PlayerControls } from '../controls/PlayerControls.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { BuildModeUI } from '../ui/BuildModeUI.js';
-import { HARDWARE_ITEMS } from '../data/hardware.js';
+import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
 import { sounds } from '../audio/SoundEffects.js';
 
 // Anything dropped below this height counts as "on the floor"
@@ -331,7 +331,7 @@ export class Game {
 
     // 2. Clicked an item placed on a bench / shelf
     if (uData.isPlaced && uData.itemId) {
-      const item = HARDWARE_ITEMS.find(it => it.id === uData.itemId);
+      const item = ALL_HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
         this.placedItems.removeItem(item.id);
         this.heldItemManager.holdItem(item);
@@ -341,7 +341,7 @@ export class Game {
 
     // 3. Clicked an item still sitting on the parts table
     if (uData.itemId) {
-      const item = HARDWARE_ITEMS.find(it => it.id === uData.itemId);
+      const item = ALL_HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
         this.shelf.hideItem(item.id);
         this.heldItemManager.holdItem(item);

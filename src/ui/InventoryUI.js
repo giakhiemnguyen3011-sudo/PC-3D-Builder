@@ -1,4 +1,4 @@
-import { HARDWARE_ITEMS, HARDWARE_CATEGORIES } from '../data/hardware.js';
+import { ALL_HARDWARE_ITEMS, HARDWARE_CATEGORIES } from '../data/hardware.js';
 import { sounds } from '../audio/SoundEffects.js';
 
 export class InventoryUI {
