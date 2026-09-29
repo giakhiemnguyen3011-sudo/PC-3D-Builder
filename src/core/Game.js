@@ -28,8 +28,19 @@ export class Game {
 
     // Scene elements
     this.room = new Room(this.scene);
-    this.shelf = new ShelfHardware(this.scene);
     this.placedItems = new PlacedItemManager(this.scene);
+
+    // The bench fills in progressively: placeholders go down immediately and
+    // each real model replaces its box as it finishes parsing, which keeps the
+    // main thread free instead of stalling on hundreds of megabytes at once.
+    this.loadingBarFill = document.getElementById('loading-bar-fill');
+    this.loadingText = document.getElementById('loading-text');
+    this.shelf = new ShelfHardware(this.scene, {
+      perFrame: 4,
+      onProgress: (loaded, total) => this.setLoadingProgress(loaded, total),
+      onReady: () => this.setLoadingProgress(1, 1)
+    });
+    this.shelf.seedPlaceholders();
 
     // Held Item Manager (first person hand)
     this.heldItemManager = new HeldItemManager(this.camera, this.scene, null);
@@ -92,15 +103,40 @@ export class Game {
     this.controls.pitch = -0.2;
     this.controls.yaw = 0;
 
-    // Hide loading screen immediately
-    const loaderScreen = document.getElementById('loading-screen');
-    if (loaderScreen) {
-      loaderScreen.classList.add('hidden');
-      setTimeout(loaderScreen.remove, 600);
-    }
+    // The room is playable straight away; the loading bar only reports how much
+    // of the bench has arrived, and the screen steps aside shortly after the
+    // first models land rather than after all of them.
+    this.loadingDone = false;
+    this.setLoadingProgress(0, this.shelf.stream.total);
 
     this.setupWindowEvents();
     this.animate();
+  }
+
+  /**
+   * Drives the loading bar from how much of the bench has arrived, then gets out
+   * of the way. The first models usually land within a frame or two, so the
+   * player is not left staring at a bar for the whole download.
+   */
+  setLoadingProgress(loaded, total) {
+    const safeTotal = total || 1;
+    const ratio = Math.min(1, loaded / safeTotal);
+    if (this.loadingBarFill) {
+      this.loadingBarFill.style.width = `${Math.round(ratio * 100)}%`;
+    }
+    if (this.loadingText) {
+      this.loadingText.textContent = `Đang tải mô hình linh kiện... ${Math.round(ratio * 100)}%`;
+    }
+    if (ratio > 0.12 || this.loadingDone) this.dismissLoadingScreen();
+  }
+
+  dismissLoadingScreen() {
+    if (this.loadingDone) return;
+    this.loadingDone = true;
+    const loaderScreen = document.getElementById('loading-screen');
+    if (!loaderScreen) return;
+    loaderScreen.classList.add('hidden');
+    setTimeout(() => loaderScreen.remove(), 600);
   }
 
   initRenderer() {

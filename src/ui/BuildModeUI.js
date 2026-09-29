@@ -147,7 +147,7 @@ export class BuildModeUI {
     }
     if (missing.length) {
       this.setToast(
-        `Bước ${step.step} cần ${missing.join(' / ')} — hãy nhặt từ kệ sắt và bỏ vào túi (phím E) trước đã.`,
+        `Bước ${step.step} cần ${missing.join(' / ')} — hãy nhặt từ bàn linh kiện và bỏ vào túi (phím E) trước đã.`,
         'warn'
       );
     }
@@ -651,15 +651,25 @@ export class BuildModeUI {
       if (cached) {
         img.src = cached;
         img.classList.add('ready');
-      } else {
+      } else if (usable) {
+        // Only the parts this step can actually take get baked. Rendering a
+        // thumbnail is a GPU readback per part, and the list may hold two dozen
+        // items of which two or three are usable right now.
         this.thumbnails.get(item).then(url => {
           if (!url || !img.isConnected) return;
           img.src = url;
           img.classList.add('ready');
         }).catch(() => {});
-
       }
+      // Anything unusable keeps the category glyph until its own step arrives.
     });
+
+    // Warm the next step's options while the player reads this one, so the
+    // thumbnails are usually ready before they are needed.
+    const next = ASSEMBLY_STEPS.find(s => s.step === (this.activeStep()?.step || 0) + 1);
+    if (next) {
+      this.thumbnails.prime(items.filter(item => stepAccepts(next, item)));
+    }
   }
 
   async selectSlotItem(item) {

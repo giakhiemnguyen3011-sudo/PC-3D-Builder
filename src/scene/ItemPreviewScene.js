@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModelCopy } from './ModelCache.js';
 import { computeFlatAlignment, measureModel } from './ModelFit.js';
 
 export class ItemPreviewScene {
@@ -21,9 +21,7 @@ export class ItemPreviewScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
 
-    this.loader = new GLTFLoader();
     this.currentModel = null;
-    this.modelCache = new Map();
     this.isDragging = false;
     this.previousMousePosition = { x: 0, y: 0 };
     this.autoRotate = true;
@@ -102,16 +100,10 @@ export class ItemPreviewScene {
       this.currentModel = null;
     }
 
-    if (this.modelCache.has(modelPath)) {
-      const cloned = this.modelCache.get(modelPath).clone();
-      this.setModel(cloned, options);
-      return;
-    }
-
-    this.loader.load(modelPath, gltf => {
-      const model = gltf.scene;
-      this.modelCache.set(modelPath, model.clone());
-      this.setModel(model, options);
+    // Shared with the bench and the build zone, so previewing a part the player
+    // is already looking at costs a clone rather than another parse.
+    loadModelCopy(modelPath).then(model => {
+      if (model) this.setModel(model, options);
     });
   }
 

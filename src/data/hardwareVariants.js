@@ -9,11 +9,8 @@ import { HARDWARE_CATEGORIES } from './hardwareCategories.js';
  * ATX board, any IHS-sized CPU, any tower cooler, any DDR4 DIMM, and so on.
  *
  * Sizing contract is identical to hardware.js: `realSize` is the longest real
- * edge in metres and `footprint` reserves table space for the part.
- *
- * shelfTier 0 is the bench top, 1 the middle shelf and 2 the lowest shelf.
- * Big parts (boards, cards, cases) sit where they can be reached; small parts
- * live on the lower shelves, which is also what keeps the bench a sane length.
+ * edge in metres and `footprint` reserves bench space for the part. Every part
+ * is displayed on the bench top; the layout decides which row it lands in.
  */
 
 // Per-category slot art, reused so every variant is instantly recognisable in
@@ -95,7 +92,6 @@ export const HARDWARE_VARIANTS = [
     price: '3,290,000 đ',
     realSize: 0.305,
     footprint: { length: 0.305, depth: 0.252 },
-    shelfTier: 0,
     iconSvg: ICON('motherboard'),
     specs: [
       { label: 'Socket', value: 'AM4 (AMD Ryzen 1000-5000)' },
@@ -120,7 +116,6 @@ export const HARDWARE_VARIANTS = [
     price: '1,890,000 đ',
     realSize: 0.244,
     footprint: { length: 0.244, depth: 0.244 },
-    shelfTier: 0,
     iconSvg: ICON('motherboard'),
     specs: [
       { label: 'Socket', value: 'AM4' },
@@ -144,7 +139,6 @@ export const HARDWARE_VARIANTS = [
     price: '4,150,000 đ',
     realSize: 0.305,
     footprint: { length: 0.305, depth: 0.252 },
-    shelfTier: 0,
     iconSvg: ICON('motherboard'),
     specs: [
       { label: 'Socket', value: 'LGA 1700 (Intel 12th Gen)' },
@@ -168,7 +162,6 @@ export const HARDWARE_VARIANTS = [
     price: '890,000 đ',
     realSize: 0.305,
     footprint: { length: 0.305, depth: 0.252 },
-    shelfTier: 0,
     iconSvg: ICON('motherboard'),
     specs: [
       { label: 'Socket', value: 'AM4 / LGA 1151 (tùy phiên bản)' },
@@ -191,7 +184,6 @@ export const HARDWARE_VARIANTS = [
     price: '1,190,000 đ',
     realSize: 0.244,
     footprint: { length: 0.244, depth: 0.244 },
-    shelfTier: 1,
     iconSvg: ICON('motherboard'),
     specs: [
       { label: 'Socket', value: 'LGA 1155 (Intel 2nd Gen)' },
@@ -216,7 +208,6 @@ export const HARDWARE_VARIANTS = [
     price: '2,790,000 đ',
     realSize: 0.0375,
     footprint: { length: 0.0375, depth: 0.0375 },
-    shelfTier: 2,
     iconSvg: ICON('cpu'),
     specs: [
       { label: 'Socket', value: 'LGA 1200' },
@@ -239,7 +230,6 @@ export const HARDWARE_VARIANTS = [
     price: '7,490,000 đ',
     realSize: 0.0375,
     footprint: { length: 0.0375, depth: 0.0375 },
-    shelfTier: 2,
     iconSvg: ICON('cpu'),
     specs: [
       { label: 'Socket', value: 'LGA 1200' },
@@ -262,7 +252,6 @@ export const HARDWARE_VARIANTS = [
     price: '18,900,000 đ',
     realSize: 0.04,
     footprint: { length: 0.04, depth: 0.04 },
-    shelfTier: 2,
     iconSvg: ICON('cpu'),
     specs: [
       { label: 'Socket', value: 'AM5 (LGA 1718)' },
@@ -285,7 +274,6 @@ export const HARDWARE_VARIANTS = [
     price: '1,150,000 đ',
     realSize: 0.04,
     footprint: { length: 0.04, depth: 0.04 },
-    shelfTier: 2,
     iconSvg: ICON('cpu'),
     specs: [
       { label: 'Socket', value: 'AM4' },
@@ -310,7 +298,6 @@ export const HARDWARE_VARIANTS = [
     price: '2,650,000 đ',
     realSize: 0.124,
     footprint: { length: 0.124, depth: 0.124 },
-    shelfTier: 2,
     iconSvg: ICON('cooler'),
     specs: [
       { label: 'Loại tản', value: 'Tháp tản nhiệt thấp (down-draft)' },
@@ -332,7 +319,6 @@ export const HARDWARE_VARIANTS = [
     price: '790,000 đ',
     realSize: 0.155,
     footprint: { length: 0.155, depth: 0.11 },
-    shelfTier: 2,
     iconSvg: ICON('cooler'),
     specs: [
       { label: 'Loại tản', value: 'Tản khí 1 ống đồng' },
@@ -356,7 +342,6 @@ export const HARDWARE_VARIANTS = [
     price: '890,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.045 },
-    shelfTier: 1,
     iconSvg: ICON('ram'),
     specs: [
       { label: 'Dung lượng', value: '16GB (1 thanh 2x8GB)' },
@@ -378,7 +363,6 @@ export const HARDWARE_VARIANTS = [
     price: '520,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.032 },
-    shelfTier: 1,
     iconSvg: ICON('ram'),
     specs: [
       { label: 'Dung lượng', value: '8GB (1 thanh 1x8GB)' },
@@ -399,7 +383,6 @@ export const HARDWARE_VARIANTS = [
     price: '430,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.032 },
-    shelfTier: 1,
     iconSvg: ICON('ram'),
     specs: [
       { label: 'Dung lượng', value: '8GB' },
@@ -422,7 +405,6 @@ export const HARDWARE_VARIANTS = [
     price: '2,450,000 đ',
     realSize: 0.1,
     footprint: { length: 0.1, depth: 0.07 },
-    shelfTier: 2,
     iconSvg: ICON('ssd'),
     specs: [
       { label: 'Dung lượng', value: '1 TB' },
@@ -444,7 +426,6 @@ export const HARDWARE_VARIANTS = [
     price: '890,000 đ',
     realSize: 0.1,
     footprint: { length: 0.1, depth: 0.07 },
-    shelfTier: 2,
     iconSvg: ICON('ssd'),
     specs: [
       { label: 'Dung lượng', value: '480 GB' },
@@ -468,7 +449,6 @@ export const HARDWARE_VARIANTS = [
     price: '2,190,000 đ',
     realSize: 0.15,
     footprint: { length: 0.15, depth: 0.15 },
-    shelfTier: 1,
     iconSvg: ICON('psu'),
     specs: [
       { label: 'Công suất', value: '550 Watts' },
@@ -490,7 +470,6 @@ export const HARDWARE_VARIANTS = [
     price: '990,000 đ',
     realSize: 0.15,
     footprint: { length: 0.15, depth: 0.15 },
-    shelfTier: 1,
     iconSvg: ICON('psu'),
     specs: [
       { label: 'Công suất', value: '500 Watts' },
@@ -514,7 +493,6 @@ export const HARDWARE_VARIANTS = [
     price: '5,490,000 đ',
     realSize: 0.28,
     footprint: { length: 0.28, depth: 0.13 },
-    shelfTier: 0,
     iconSvg: ICON('gpu'),
     specs: [
       { label: 'Dung lượng VRAM', value: '8GB' },
@@ -525,90 +503,4 @@ export const HARDWARE_VARIANTS = [
     description: 'Card đồ họa bản mạ vàng dùng để so sánh kích thước với card đồ họa cao cấp.',
     beginnerTip: '💡 Card dài hơn 28 cm thường không vừa khe PCIe của thùng mini. Đo trước khoảng trống từ khay ổ cứng.'
   },
-
-  // ------------------------------------------------------------------- cases
-  {
-    id: 'case_dream_black',
-    name: 'Dream Computer Case (Black)',
-    category: HARDWARE_CATEGORIES.CASE,
-    categoryKey: 'case',
-    tag: 'Case',
-    modelPath: '/models/Completed_Computer_Case_Model/dream_computer_Black_setup.glb',
-    brand: 'Dream',
-    price: '1,690,000 đ',
-    realSize: 0.45,
-    footprint: { length: 0.45, depth: 0.24 },
-    shelfTier: 0,
-    iconSvg: ICON('pc case'),
-    specs: [
-      { label: 'Form Factor', value: 'ATX / Micro-ATX' },
-      { label: 'Tấm kính', value: 'Kính cường lực mặt bên' },
-      { label: 'Màu', value: 'Đen' }
-    ],
-    description: 'Thùng case đen với tấm kính cường lực, dạng tháp đứng phổ biến nhất.',
-    beginnerTip: '💡 Thùng kính phải tháo trước khi lắp, và phải lắp lại sau khi đã cắm hết dây nguồn.'
-  },
-  {
-    id: 'case_dream_white',
-    name: 'Dream Computer Case (White)',
-    category: HARDWARE_CATEGORIES.CASE,
-    categoryKey: 'case',
-    tag: 'Case',
-    modelPath: '/models/Completed_Computer_Case_Model/dream_computer_setup.glb',
-    brand: 'Dream',
-    price: '1,790,000 đ',
-    realSize: 0.45,
-    footprint: { length: 0.45, depth: 0.24 },
-    shelfTier: 0,
-    iconSvg: ICON('pc case'),
-    specs: [
-      { label: 'Form Factor', value: 'ATX / Micro-ATX' },
-      { label: 'Tấm kính', value: 'Kính cường lực mặt bên' },
-      { label: 'Màu', value: 'Trắng' }
-    ],
-    description: 'Cùng kiểu thùng nhưng màu trắng, hợp dàn máy phong cách sáng.',
-    beginnerTip: '💡 Thùng màu trắng dễ lộ bụi hơn thùng đen nên cần lau chùi thường xuyên hơn.'
-  },
-  {
-    id: 'case_lowpoly_office',
-    name: 'Low Poly Office Computer Case',
-    category: HARDWARE_CATEGORIES.CASE,
-    categoryKey: 'case',
-    tag: 'Case',
-    modelPath: '/models/Completed_Computer_Case_Model/low_poly_office_computer_case.glb',
-    brand: 'Generic',
-    price: '1,150,000 đ',
-    realSize: 0.42,
-    footprint: { length: 0.42, depth: 0.22 },
-    shelfTier: 0,
-    iconSvg: ICON('pc case'),
-    specs: [
-      { label: 'Form Factor', value: 'Micro-ATX / Mini-ITX' },
-      { label: 'Kiểu', value: 'Low-poly dạng ngăn kéo' },
-      { label: 'Nguồn', value: 'Hộc nguồn dưới đáy' }
-    ],
-    description: 'Thùng dạng ngăn kéo gọn cho văn phòng, nhiều mặt thoáng gió ở mặt trước.',
-    beginnerTip: '💡 Thùng dạng ngăn kéo đặt bo theo nằm ngang, nên khe PCIe của nó là khe cắm ngang dài.'
-  },
-  {
-    id: 'case_color_edition',
-    name: 'Computer Case (Color Edition)',
-    category: HARDWARE_CATEGORIES.CASE,
-    categoryKey: 'case',
-    tag: 'Case',
-    modelPath: '/models/Completed_Computer_Case_Model/computer__color.glb',
-    brand: 'Generic',
-    price: '1,290,000 đ',
-    realSize: 0.45,
-    footprint: { length: 0.45, depth: 0.24 },
-    shelfTier: 0,
-    iconSvg: ICON('pc case'),
-    specs: [
-      { label: 'Form Factor', value: 'ATX' },
-      { label: 'Tấm kính', value: 'Kính cường lực' },
-      { label: 'Màu', value: 'Nhiều màu' }
-    ],
-    description: 'Thùng case bản màu, dùng để so sánh ngoại hình và kích thước với các thùng khác.',
-    beginnerTip: '💡 Trước khi mua case, kiểm tra chiều cao tản CPU và chiều dài card đồ họa có vừa không.'
-  }
 ];

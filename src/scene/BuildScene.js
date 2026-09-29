@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModelCopy } from './ModelCache.js';
 import { buildFittedModel } from './ModelFit.js';
 import { createComputerCase3DGroup } from './Room.js';
 import { CASE, CASE_REF, CASE_ZONES, CASE_BOUNDS, mountQuaternion } from './caseLayout.js';
@@ -39,8 +39,6 @@ export class BuildScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
 
-    this.loader = new GLTFLoader();
-    this.modelCache = new Map();
 
     this.raycaster = new THREE.Raycaster();
     this.pointerNdc = new THREE.Vector2();
@@ -796,25 +794,18 @@ export class BuildScene {
   }
 
   _loadFitted(item) {
-    return new Promise(resolve => {
-      const attach = gltf => {
-        const { group } = buildFittedModel(gltf.scene, {
-          realSize: item.realSize,
-          flat: true
-        });
-        resolve(group);
-      };
-      if (this.modelCache.has(item.modelPath)) {
-        attach({ scene: this.modelCache.get(item.modelPath).clone() });
-      } else {
-        this.loader.load(item.modelPath, gltf => {
-          this.modelCache.set(item.modelPath, gltf.scene);
-          attach(gltf);
-        }, undefined, err => {
-          console.warn(`Build zone could not load ${item.name}:`, err);
-          resolve(null);
-        });
+    // The shared cache means a part the player just picked off the bench is
+    // already parsed - this is a clone, not a second download.
+    return loadModelCopy(item.modelPath).then(copy => {
+      if (!copy) {
+        console.warn(`Build zone could not load ${item.name}`);
+        return null;
       }
+      const { group } = buildFittedModel(copy, {
+        realSize: item.realSize,
+        flat: true
+      });
+      return group;
     });
   }
 
@@ -1005,8 +996,8 @@ export class BuildScene {
     this.hideCableTargets();
     if (this.caseRoot) this.pivot.remove(this.caseRoot);
 
-    this.modelCache.clear();
     this.renderer.dispose();
+
     if (this.renderer.forceContextLoss) this.renderer.forceContextLoss();
   }
 }

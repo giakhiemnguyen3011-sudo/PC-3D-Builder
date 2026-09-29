@@ -7,10 +7,12 @@
  *   realSize   - the longest real-world edge of the part, in metres. Every mesh is
  *                scaled so its bounding box matches this, so a 0.04 CPU really is
  *                4 cm wide next to a 0.305 ATX board.
- *   footprint  - real-world length/depth (metres) reserved on the rack. `length`
- *                runs along the rack, `depth` across it. Used to lay items out
- *                evenly and to auto-grow the rack.
- *   shelfTier  - which rack tier the part is displayed on (0 = bottom).
+ *   footprint  - real-world length/depth (metres) reserved on the bench. `length`
+ *                runs along the bench, `depth` across it. Used to lay items out
+ *                in rows and to auto-grow the bench.
+ *
+ * Every part is displayed on the bench top; the layout wraps them into rows, so
+ * there is no tier to assign.
  */
 
 import { HARDWARE_CATEGORIES } from './hardwareCategories.js';
@@ -28,8 +30,6 @@ export const HARDWARE_ITEMS = [
     price: '4,890,000 đ',
     realSize: 0.305,
     footprint: { length: 0.305, depth: 0.252 },
-    shelfTier: 0,
-    shelfTier: 0,
 
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="6" width="52" height="52" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
@@ -65,8 +65,6 @@ export const HARDWARE_ITEMS = [
     price: '3,290,000 đ',
     realSize: 0.04,
     footprint: { length: 0.04, depth: 0.04 },
-    shelfTier: 2,
-    shelfTier: 2,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="10" width="44" height="44" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
       <rect x="18" y="18" width="28" height="28" rx="3" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/>
@@ -99,8 +97,6 @@ export const HARDWARE_ITEMS = [
     price: '4,190,000 đ',
     realSize: 0.0375,
     footprint: { length: 0.0375, depth: 0.0375 },
-    shelfTier: 2,
-    shelfTier: 2,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="10" width="44" height="44" rx="4" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
       <rect x="18" y="18" width="28" height="28" rx="3" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/>
@@ -124,8 +120,6 @@ export const HARDWARE_ITEMS = [
     price: '890,000 đ',
     realSize: 0.154,
     footprint: { length: 0.154, depth: 0.12 },
-    shelfTier: 2,
-    shelfTier: 2,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="10" width="36" height="38" rx="4" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
       <circle cx="32" cy="29" r="13" stroke="#c084fc" stroke-width="2"/>
@@ -156,8 +150,6 @@ export const HARDWARE_ITEMS = [
     price: '1,750,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.051 },
-    shelfTier: 1,
-    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
       <rect x="10" y="20" width="44" height="6" rx="2" fill="url(#rgbGrad)"/>
@@ -197,8 +189,6 @@ export const HARDWARE_ITEMS = [
     price: '2,150,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.06 },
-    shelfTier: 1,
-    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
     </svg>`,
@@ -220,8 +210,6 @@ export const HARDWARE_ITEMS = [
     price: '1,750,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.051 },
-    shelfTier: 1,
-    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#ec4899" stroke-width="2"/>
       <rect x="10" y="20" width="44" height="6" rx="2" fill="#38bdf8"/>
@@ -251,8 +239,6 @@ export const HARDWARE_ITEMS = [
     price: '2,150,000 đ',
     realSize: 0.1334,
     footprint: { length: 0.1334, depth: 0.06 },
-    shelfTier: 1,
-    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
       <rect x="10" y="20" width="44" height="6" rx="2" fill="#fbbf24"/>
@@ -275,8 +261,6 @@ export const HARDWARE_ITEMS = [
     price: '1,450,000 đ',
     realSize: 0.1,
     footprint: { length: 0.1, depth: 0.07 },
-    shelfTier: 2,
-    shelfTier: 2,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="12" y="10" width="40" height="44" rx="4" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
       <rect x="26" y="24" width="12" height="12" fill="#f97316"/>
@@ -307,8 +291,6 @@ export const HARDWARE_ITEMS = [
     price: '1,590,000 đ',
     realSize: 0.15,
     footprint: { length: 0.15, depth: 0.15 },
-    shelfTier: 1,
-    shelfTier: 1,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="12" width="44" height="40" rx="4" fill="#0f172a" stroke="#f97316" stroke-width="2"/>
       <circle cx="32" cy="32" r="14" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="3 3"/>
@@ -339,8 +321,6 @@ export const HARDWARE_ITEMS = [
     price: '34,900,000 đ',
     realSize: 0.313,
     footprint: { length: 0.313, depth: 0.15 },
-    shelfTier: 0,
-    shelfTier: 0,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="16" width="52" height="32" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
       <circle cx="22" cy="32" r="10" stroke="#4ade80" stroke-width="2"/>
@@ -374,8 +354,6 @@ export const HARDWARE_ITEMS = [
     price: '2,990,000 đ',
     realSize: 0.24,
     footprint: { length: 0.24, depth: 0.135 },
-    shelfTier: 0,
-    shelfTier: 0,
     iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="16" width="52" height="32" rx="4" fill="#14532d" stroke="#4ade80" stroke-width="2"/>
     </svg>`,

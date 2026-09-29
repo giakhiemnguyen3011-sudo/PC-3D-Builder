@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModelCopy } from '../scene/ModelCache.js';
 import { sounds } from '../audio/SoundEffects.js';
 import { buildFittedModel } from '../scene/ModelFit.js';
 
@@ -23,8 +23,6 @@ export class HeldItemManager {
     this.currentPos = this.defaultPos.clone();
     this.heldObjectGroup.position.copy(this.currentPos);
 
-    this.loader = new GLTFLoader();
-    this.modelCache = new Map();
 
     // Inspection state
     this.isInspecting = false;
@@ -102,9 +100,8 @@ export class HeldItemManager {
     this.heldItemData = itemData;
     sounds.playPickup();
 
-    const loadAndAttach = model => {
-      const cloned = model.clone();
-
+    // loadModelCopy hands back an independent clone, ready to be re-fitted.
+    const loadAndAttach = cloned => {
       // Real-world metres, laid flat. Tiny parts (CPU pins, RAM chips) get a
       // readability floor so they stay visible in the hand.
       const { group, size } = buildFittedModel(cloned, {
@@ -134,14 +131,11 @@ export class HeldItemManager {
       return;
     }
 
-    if (this.modelCache.has(itemData.modelPath)) {
-      loadAndAttach(this.modelCache.get(itemData.modelPath));
-    } else {
-      this.loader.load(itemData.modelPath, gltf => {
-        this.modelCache.set(itemData.modelPath, gltf.scene);
-        loadAndAttach(gltf.scene);
-      });
-    }
+    // One shared parse per model file: by the time a part reaches the hand it is
+    // almost always already on the bench, so this is a clone.
+    loadModelCopy(itemData.modelPath).then(model => {
+      if (model) loadAndAttach(model);
+    });
   }
 
   /** Inspection pose. `noTilt` items (the finished PC) may only spin on Y. */

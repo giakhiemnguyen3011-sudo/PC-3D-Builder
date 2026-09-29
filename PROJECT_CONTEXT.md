@@ -81,13 +81,13 @@ D:\pc-builder-3d\
     │   └── assemblyPlan.js        # Kế hoạch 12 bước lắp ráp (vị trí, linh kiện, hành động bắt buộc)
     │
     ├── scene\
-    │   ├── Room.js                # Căn phòng xưởng, bàn gỗ trung tâm, kệ sắt, màn hình 27" có canvas BIOS/OS, placeholder thùng máy
+    │   ├── Room.js                # Căn phòng xưởng, bàn gỗ trung tâm, màn hình 27" có canvas BIOS/OS, placeholder thùng máy
     │   ├── caseLayout.js          # Số đo thật của thùng ATX + CASE_ZONES (vị trí lắp, pattern ốc) - nguồn sự thật duy nhất
-    │   ├── shelfLayout.js         # Hình học kệ sắt + bố cục xếp linh kiện (tự kéo dài kệ khi cần)
+    │   ├── shelfLayout.js         # Hình học bàn gỗ + bố cục xếp linh kiện thành hàng (tự kéo dài khi cần)
     │   ├── ModelFit.js            # Quy đổi model về kích cước thực (mét) + tự xoay cho linh kiện nằm ngang & thẳng
     │   ├── BuildScene.js          # Build Zone tương tác: thùng x-ray 50%, vùng highlight, model theo con trỏ, ốc, cáp
     │   ├── ItemThumbnails.js      # Nướng ảnh PNG model 3D cho danh sách linh kiện
-    │   ├── ShelfHardware.js       # Bố trí linh kiện vật lý 3D trên kệ sắt bên phải phòng
+    │   ├── ShelfHardware.js       # Bố trí linh kiện vật lý 3D trên bàn gỗ, tải dần theo lô
     │   ├── PlacedItemManager.js   # Quản lý các vật phẩm bị thả/đặt ra bàn, sàn, kệ (nhặt lại được)
     │   └── ItemPreviewScene.js    # Khung nhìn 3D phụ trong Inventory, tự canh giữa + khung vừa khung
     │
@@ -101,22 +101,22 @@ D:\pc-builder-3d\
 
 ---
 
-## 4. KÍCH THƯỚC THỰC TẾ & BỐ CỤC KỆ LINH KIỆN (REAL-WORLD SIZING & RACK LAYOUT)
+## 4. KÍCH THƯỚC THỰC TẾ & BỐ CỤC BÀN LINH KIỆN (REAL-WORLD SIZING & BENCH LAYOUT)
 
 Do các model xuất từ phần mềm 3D (Blender/Maya/3ds Max/Sketchfab) có đơn vị và hướng đặt khác nhau (có model nằm sấp, có model đứng, có model lệch), hệ thống **không dùng `baseRotation` thủ công nữa**. Thay vào đó:
 
 - **`realSize`** (mét) trong `hardware.js`: cạnh dài nhất thực tế của linh kiện. Mọi mesh được scale sao cho bounding box lớn nhất khớp đúng con số này → CPU thật sự nhỏ hơn bo mạch chủ, GPU dài hơn ổ cứng.
-- **`footprint: { length, depth }`** (mét): diện tích chỗ để trên kệ. `length` chạy dọc theo kệ, `depth` chạy ngang kệ. Dùng để tính khoảng cách và kéo dài kệ.
-- **`shelfTier`**: tầng hiển thị. `0` = mặt bàn (0.82 m), `1` = kệ giữa (0.575 m), `2` = kệ dưới (0.315 m). Linh kiện to (bo mạch, card, case) để ở tầng 0 cho dễ với tay; linh kiện nhỏ để tầng 2.
-- **`ALL_HARDWARE_ITEMS`** = `HARDWARE_ITEMS` + `HARDWARE_VARIANTS`. Toàn bộ 33 model trong `public/models` (trừ 3 file `Decorative_model`) đã được đưa vào danh mục: 35 linh kiện. 12 bước lắp ráp nhận linh kiện theo **`tag`** chứ không theo `id`, nên các biến thể mới dùng được ngay mà không phải sửa `assemblyPlan.js`. Riêng nhóm `Case` là **carry-only**: bạn có thể cầm và xem, nhưng không bước nào lắp case vào case.
+- **`footprint: { length, depth }`** (mét): diện tích chỗ để trên bàn. `length` chạy dọc theo bàn, `depth` chạy ngang bàn. Dùng để xếp hàng và tự kéo dài bàn.
+- **`shelfTier`**: *(đã bỏ)*. Bàn chỉ có **một mặt làm việc ở 0,82 m**. Linh kiện nằm ở kệ dưới là linh kiện người chơi không với tới và không nhìn thấy, nên nay **không còn kệ dưới nào** (`table.tierSurfaces` chỉ có 1 phần tử). Khi danh mục dài lên, linh kiện được **xếp thành nhiều hàng cạnh nhau trên cùng mặt bàn** (`tiers[0].rows`), chứ không xếp xuống tầng dưới.
+- **`ALL_HARDWARE_ITEMS`** = `HARDWARE_ITEMS` + `HARDWARE_VARIANTS`: **31 linh kiện**, phủ 29/32 model trong `public/models` (3 file `Decorative_model` chưa dùng; nhóm case dựng sẵn đã bị gỡ). 12 bước lắp ráp nhận linh kiện theo **`tag`** chứ không theo `id`, nên biến thể mới dùng được ngay mà không phải sửa `assemblyPlan.js`. Không còn nhóm carry-only: **mọi linh kiện đều lắp được** vào đúng bước của nó.
 - **`hardwareCategories.js`**: tách riêng để `hardware.js` và `hardwareVariants.js` cùng dùng mà không import vòng.
 - **`ModelFit.js`** (`buildFittedModel` + `computeFlatAlignment`): tự động
   1. đo bounding box gốc của model,
   2. chọn trục **mỏng nhất làm trục dọc** → linh kiện luôn *nằm ngang*, không bao giờ đứng bằng mũi,
-  3. chọn trục **dài nhất làm trục X** → cạnh dài nằm song song với kệ,
+  3. chọn trục **dài nhất làm trục X** → cạnh dài nằm song song với bàn,
   4. chọn phép hoán trục **ít xoay nhất** (kèm ưu tiên giữ mặt "ngửa lên") để model vốn đã nằm phẳng không bị lật,
-  5. scale về `realSize`, canh giữa theo X/Z và đặt sát mặt kệ (minY = 0).
-- **`shelfLayout.js`** (`getShelfLayout`, `getTableObstacle`): tính ra hình học bàn và vị trí từng linh kiện — chia đều theo 3 tầng, giới hạn khe hở tối đa (`maxGap` 0.05 m), canh giữa, và **tự kéo dài bàn** nếu tổng chiều dài vượt quá. Kết quả được `Room.js` (dựng bàn + 2 kệ dưới theo `tierSurfaces`), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm) dùng chung.
+  5. scale về `realSize`, canh giữa theo X/Z và đặt sát mặt bàn (minY = 0).
+- **`shelfLayout.js`** (`getShelfLayout`, `getTableObstacle`): hình học bàn và vị trí từng linh kiện. Chiều rộng bàn bị giới hạn ở `maxWidth` 1,3 m nên số hàng là `rowCount()`, **phần dài nhất xếp vào hàng đang ngắn nhất** (first-fit-decreasing) để các hàng cân nhau và bàn không bị một linh kiện dài kéo giãn; mỗi hàng nằm trong một dải cách nhau `rowGap`. Chiều dài bàn **tự kéo dài** theo hàng dài nhất. Kết quả dùng chung cho `Room.js` (dựng bàn), `ShelfHardware.js` (đặt linh kiện) và `PlayerControls.js` (va chạm). Hiện tại: bàn **2,38 × 1,10 m, 3 hàng, 31 linh kiện, không có mặt nào dưới 0,8 m**.
 
 Kích thước thực tế đang dùng:
 
@@ -193,14 +193,14 @@ Camera tự glide tới đúng vị trí đang làm việc nên tạm CPU 4 cm v
   - `W`: Di chuyển Tới (`+forward`).
   - `S`: Di chuyển Lùi (`-forward`).
 - **Phím Shift**: Bật/Tắt Shift-Lock (khóa/mở con trỏ chuột). Mặc định là bật khi tải trang.
-- **Tâm ngắm (Crosshair)**: Hiển thị liên tục ở giữa màn hình. Khi rê trúng vật thể có thể nhặt, bề mặt bàn/kệ hoặc socket thùng máy, tâm ngắm chuyển màu cyan rực rỡ và phóng to nhẹ.
+- **Tâm ngắm (Crosshair)**: Hiển thị liên tục ở giữa màn hình. Khi rê trúng vật thể có thể nhặt, bề mặt bàn hoặc socket thùng máy, tâm ngắm chuyển màu cyan rực rỡ và phóng to nhẹ.
 
 ### 5.2. Nhặt, Cầm và Thả đồ (LMB & RMB)
 - **Chuột trái (LMB)**:
-  - Khi tay trống: Nhấp vào vật thể trên kệ sắt hoặc trên bàn/sàn để nhặt lên tay.
+  - Khi tay trống: Nhấp vào vật thể trên bàn linh kiện hoặc trên bàn/sàn để nhặt lên tay.
   - Khi đang cầm vật thể:
     - Nếu nhắm vào vị trí lắp ráp trên thùng máy: Lắp ráp vào case.
-    - Nếu nhắm vào bề mặt bàn, kệ hoặc sàn: Đặt/thả vật phẩm nằm ngay ngắn tại điểm nhắm của crosshair.
+    - Nếu nhắm vào bề mặt bàn hoặc sàn: Đặt/thả vật phẩm nằm ngay ngắn tại điểm nhắm của crosshair.
 - **Giữ Chuột phải (RMB)**:
   - Tạm thời **khóa khả năng quay góc nhìn camera** của nhân vật (`isLookLocked = true`).
   - Đưa vật thể đang cầm mượt mà ra **chính giữa màn hình**.
@@ -239,3 +239,15 @@ Camera tự glide tới đúng vị trí đang làm việc nên tạm CPU 4 cm v
 10. Đóng nắp kính cường lực bảo vệ thùng máy.
 11. Cắm cáp màn hình DisplayPort vào Card đồ họa & cắm dây nguồn AC.
 12. **Bật nút nguồn (Power On)**: Hệ thống quạt quay, đèn RGB đổi màu, còi beep POST vang lên, màn hình khởi động BIOS POST và nạp PC Builder OS thành công kèm pháo hoa chúc mừng.
+
+## 9. TỐI ƯU TỐC ĐỘ TẢI (LOADING PERFORMANCE)
+
+Tài liệu GLB nặng **303 MB / 32 file**; một phiên chơi tải **238 MB** (3 file `Decorative_model` không được gọi nên không tải). Ba quy tắc giúp phần tải nhanh hơn nhiều lần:
+
+1. **`ModelCache.js` — mỗi file chỉ parse MỘT lần.** Trước đây có **4 `GLTFLoader` riêng biệt** (`ShelfHardware`, `BuildScene`, `ItemPreviewScene`, `ItemThumbnails`) cộng thêm một loader trong `HeldItemManager`, nên một model có thể bị parse 4–5 lần ở các màn hình khác nhau. Giờ tất cả đều gọi `loadModelCopy(modelPath)`, trả về `clone()` của scene đã parse. `clone()` chỉ sao chép cây node, không sao chép lại buffer, nên rẻ hơn nhiều so với parse lại một file 30 MB.
+
+2. **Bàn hiện đủ ngay, tải theo lô.** `ShelfHardware.seedPlaceholders()` đặt ngay một hộp xám mờ cho tất cả linh kiện (đồng bộ, không tốn thời gian), rồi `streamModels()` tải từng file và thay hộp bằng model thật khi file xong. Màn hình loading chỉ dùng để báo tiến độ và **tự ẩn ngay khi phần đầu tiên model về** (`Game.setLoadingProgress`, ngưỡng 12%), thay vì phải đợi tải hết.
+
+3. **Thumbnail chỉ bake phần phù hợp.** `toDataURL()` là lệnh đọc GPU → CPU, rất nặng. Danh sách slot chỉ bake **linh kiện mà bước hiện tại dùng được** (thường 2–3 cái), các mục còn lại giữ hình ký tự danh mục; đồng thời **warm sẵn** cho bước kế tiếp để sẵn sàng khi cần.
+
+`streamModels` nghỉ giữa các lô bằng `setTimeout`, **không dùng `requestAnimationFrame`**: rAF dừng hẳn khi chuyển tab, sẽ làm hàng đợi tải dừng dở.

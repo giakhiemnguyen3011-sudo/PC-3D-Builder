@@ -15,7 +15,7 @@ Trình mô phỏng 3D tương tác trực quan cao cấp chạy trực tiếp tr
 2. **Cơ chế điều khiển First-Person linh hoạt:**
    - `W`, `A`, `S`, `D` hoặc 4 phím mũi tên: Di chuyển xung quanh phòng với hệ thống va chạm vật lý (không đi xuyên tường hay xuyên bàn).
    - **Shift-Lock**: Tự động bật khóa tâm chuột khi vào game. Nhấn `Shift` để bật/tắt Shift-Lock (giải phóng chuột tự do).
-   - **Chuột trái (LMB)**: Nhặt linh kiện từ kệ sắt, tương tác với các vị trí lắp ráp trên thùng máy, mở nắp kính, bật công tắc nguồn.
+   - **Chuột trái (LMB)**: Nhặt linh kiện từ bàn linh kiện, tương tác với các vị trí lắp ráp trên thùng máy, mở nắp kính, bật công tắc nguồn.
    - **Chuột phải (RMB giữ + rê chuột)**: Xoay 360° vật thể đang cầm trên tay để quan sát chi tiết chân pin, khe cắm, lá tản nhiệt.
    - `E`: Cất linh kiện đang cầm trên tay vào Túi đồ (Inventory).
    - `R`: Mở / Đóng giao diện Kho đồ (RPG Inventory).
@@ -28,7 +28,7 @@ Trình mô phỏng 3D tương tác trực quan cao cấp chạy trực tiếp tr
      - Tên đầy đủ, thương hiệu, giá tham khảo thực tế.
      - Bảng thông số kỹ thuật chi tiết (Socket, Chipset, Số nhân luồng, Bus RAM, VRAM, TDP...).
      - Lời khuyên & kiến thức thực tế dành cho người mới ("Kiến thức cho người mới").
-     - Các nút chức năng: **Cầm trên tay (Equip)**, **Lắp trực tiếp vào case**, **Cất lên kệ sắt**.
+     - Các nút chức năng: **Cầm trên tay (Equip)**, **Lắp trực tiếp vào case**, **Cất lại lên bàn**.
    - **Không gian phía dưới**:
      - Các tab phân loại danh mục.
      - Lưới hiển thị các ô linh kiện trong túi với badge trạng thái (*Trong túi*, *Đang cầm*, *Đã lắp*, *Trên kệ*).

@@ -1,20 +1,21 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildFittedModel } from './ModelFit.js';
+import { loadModelCopy } from './ModelCache.js';
 
 /**
  * Bakes a small PNG of each hardware model for the build-mode slot list.
  *
  * One shared offscreen WebGL context renders every part once and caches the data
  * URL, so the list can show real 3D models without spinning up a renderer per
- * slot (browsers cap live WebGL contexts at around 16).
+ * slot (browsers cap live WebGL contexts at around 16). The model itself comes
+ * from the shared ModelCache, so baking a thumbnail for a part that is already
+ * on the bench costs a clone rather than a second parse of the file.
  */
 export class ItemThumbnailBaker {
   constructor({ size = 128 } = {}) {
     this.size = size;
     this.cache = new Map();
     this.pending = new Map();
-    this.loader = new GLTFLoader();
     this.renderer = null;
     this.scene = null;
     this.camera = null;
@@ -78,11 +79,11 @@ export class ItemThumbnailBaker {
         return done(null);
       }
 
-      this.loader.load(
-        item.modelPath,
-        gltf => {
+      loadModelCopy(item.modelPath)
+        .then(copy => {
+          if (!copy) return done(null);
           try {
-            const { group, size } = buildFittedModel(gltf.scene, {
+            const { group, size } = buildFittedModel(copy, {
               realSize: item.realSize,
               flat: true
             });
@@ -118,13 +119,8 @@ export class ItemThumbnailBaker {
             console.warn(`Thumbnail failed for ${item.name}:`, err);
             done(null);
           }
-        },
-        undefined,
-        err => {
-          console.warn(`Thumbnail model missing for ${item.name}:`, err);
-          done(null);
-        }
-      );
+        })
+        .catch(() => done(null));
     });
 
     this.pending.set(item.id, job);

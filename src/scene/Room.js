@@ -306,8 +306,10 @@ export class Room {
     edge.castShadow = true;
     this.group.add(edge);
 
-    // ---- lower shelves (tier 1 and 2 surfaces) ----
-    // Drawn from the layout so adding a tier to shelfLayout.js is enough.
+    // ---- lower shelves, if the layout ever defines any ----
+    // The bench is currently a single worktop: anything on a lower shelf is a
+    // part the player cannot reach or see, so there are none. Drawn from the
+    // layout so adding one is a data change, not a geometry change.
     table.tierSurfaces.slice(1).forEach(surfaceY => {
       const board = new THREE.Mesh(
         new THREE.BoxGeometry(width - 0.06, table.shelfThickness, length - 0.1),
@@ -339,16 +341,18 @@ export class Room {
       this.group.add(leg);
     });
 
-    // Mid leg pairs so a 2m+ table does not sag
+    // Centre legs so a long bench does not sag. Purely structural - not a
+    // surface, so nothing can ever be placed on them.
     [-1, 1].forEach(sz => {
       const leg = new THREE.Mesh(
-        new THREE.BoxGeometry(legSize, table.shelfHeight - table.shelfThickness, legSize),
+        new THREE.BoxGeometry(legSize, legH, legSize),
         legMat
       );
-      leg.position.set(tx, (table.shelfHeight - table.shelfThickness) / 2, tz + sz * (length / 2 - legInset));
+      leg.position.set(tx, legH / 2, tz + sz * (length / 2 - legInset));
       leg.castShadow = true;
       this.group.add(leg);
     });
+
 
     // ---- aprons / stretchers ----
     const apronMat = trimMat;
