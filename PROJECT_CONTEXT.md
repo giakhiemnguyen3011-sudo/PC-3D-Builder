@@ -277,3 +277,49 @@ Tài liệu GLB nặng **303 MB / 32 file**; một phiên chơi tải **238 MB**
 3. **Thumbnail chỉ bake phần phù hợp.** `toDataURL()` là lệnh đọc GPU → CPU, rất nặng. Danh sách slot chỉ bake **linh kiện mà bước hiện tại dùng được** (thường 2–3 cái), các mục còn lại giữ hình ký tự danh mục; đồng thời **warm sẵn** cho bước kế tiếp để sẵn sàng khi cần.
 
 `streamModels` nghỉ giữa các lô bằng `setTimeout`, **không dùng `requestAnimationFrame`**: rAF dừng hẳn khi chuyển tab, sẽ làm hàng đợi tải dừng dở.
+
+---
+
+## 10. TỐI ƯU FPS KHI CHƠI (RUNTIME PERFORMANCE)
+
+### 10.1. Đo trước, đừng đoán
+
+Phòng này **rất nhẹ về hình học**: 198 mesh, **6.638 tam giác**, 5 nguồn sáng. Đo được (`profile-fps.mjs`):
+
+| Hạng mục | Chi phí/khung |
+|---|---|
+| Raycast chuột ngắm | **~1,0 ms** |
+| Phần còn lại của vòng `animate()` | ~0,48 ms |
+| **Tổng script mỗi khung** | **~1,44 ms / 16,67 ms = 8,6%** |
+
+Kết luận quan trọng: **chỉ 8,6% thời gian khung nằm ở script**, phần còn lại là GPU. Nên bóp hình học (LOD, giảm mesh, instancing) gần như vô nghĩa ở đây — thứ cần giảm là **số pixel phải tô màu**.
+
+### 10.2. Thứ tự ưu tiên: giảm số pixel, không giảm số mesh
+
+1. **`PerformanceManager.js` — tự co giãn độ phân giải.** Đo thời gian khung thật rồi điều chỉnh `setPixelRatio` giữa **0,5x và 2x**, nhắm 45 fps. Giảm 2x → 1x là mất **3/4** số pixel tô màu, trong khi bỏ bớt vài mesh gần như không đổi gì. Nó **hạ nhanh, lên chậm** (một nhân 0,82 khi chậm, một nhân 1,08 khi nhanh) và cần 2 lần đo liên tiếp cùng chiều mới đổi, nên không dao động. Frame dài hơn 250 ms bị bỏ qua — nếu không, một lần treo khi parse model sẽ làm nghị quy xuống sàn. Đọc giá hiển thị ở `#perf-readout`.
+
+2. **Bóng đổ không vẽ lại mỗi khung.** Mặc định của three.js là vẽ lại toàn bộ depth map 60 lần/giây dù phòng gần như đứng yên. Đặt `shadowMap.autoUpdate = false` và chỉ vẽ lại **mỗi 4 khung** (15 Hz) — không ai thấy bóng chuyển trong phòng tĩnh. Kèm `Game.markWorldChanged()` để nhặt/thả vẫn có bóng đúng ngay khung kế tiếp. Shadow map **2048 → 1024** (vùng đổ 8 m nên ~8 mm/texel, dư cho đồ nội thất).
+
+3. **`PCFSoftShadowMap` → `PCFShadowMap`.** Bộ lọc mềm lấy ~4× số mẫu bóng cho mỗi pixel được chiếu sáng; ở một cảnh toàn pixel thì đó là khoản chi phí lớn nhất mà không đổi hình dáng gì.
+
+4. **`Room.update` vẽ màn hình 2D mỗi khung.** Trong lúc POST, mỗi khung đều vẽ lại canvas 2D và **upload lại toàn bộ texture màn hình**. Nay chỉ vẽ 5 lần/giây — vẫn mượt mà với một đoạn hoạt hình dài vài giây.
+
+### 10.3. Raycast chuột ngắm: tốn nhất, và dễ sửa nhất
+
+Raycast đệ quy trên toàn bộ 56 mesh **60 lần/giây** là phần tốn nhất của khung, nhưng kết quả của nó chỉ đổi khi **camera hoặc thế giới thay đổi**. Nay `PlayerControls` so vị trí + quaternion của camera với lần đo trước và **bỏ qua khung đó** nếu không đổi; `Game.markWorldChanged()` báo khi có linh kiện xuất hiện/biến mất. Đo lại:
+
+| | Trước | Sau |
+|---|---|---|
+| Đứng yên | 1,44 ms | **0,006 ms** |
+| Quét qua bàn (xấu nhất) | 1,44 ms | **0,073 ms** |
+
+Kèm đó: `update()` cấp phát sẵn 3 `Vector3` thay vì tạo mới mỗi khung, danh sách mục tiêu raycast được gom một lần thay vì `...spread` ba mảng mỗi khung, và các node HUD được tra một lần rồi **chỉ ghi khi giá trị thực sự đổi** (ghi `textContent`/`style` mỗi khung làm hỏng style/layout cả trang).
+
+### 10.4. Hai lỗi thật tìm ra khi tối ưu
+
+- **Linh kiện đã nhặt vẫn bắt được.** `ShelfHardware.hideItem()` chỉ đặt `visible = false`, mà three.js r174 **vẫn raycast cả object đang ẩn** (đã kiểm chứng: 2 hit ở cả hai trạng thái). Nên một linh kiện đã cầm lên vẫn sáng crosshair và bấm được lần hai. Nay vòng duyệt hit bỏ qua mọi object có cha/con không hiển thị (`isVisibleChain`).
+- **Tia ngắm trễ một khung.** `setFromCamera` cần `matrixWorld` của camera, mà nó chỉ được cập nhật trong `renderer.render()` — tức là **sau** khi raycast đã chạy. Nay `update()` gọi `camera.updateMatrixWorld()` trước.
+
+Cả hai đều có test chặn trong `verify-performance.mjs` (17 test), cùng các test cho việc bỏ qua raycast, chỉ ghi DOM khi đổi, và `PerformanceManager` không đụng sàn / không hồi phục quá mức.
+
+Lưu ý khi đo hiệu năng: `Raycaster` có biến động thời gian rất lớn giữa các lần chạy (đo sạch thấy 0,03–0,20 ms), nên đừng kết luận từ một lần chạy đơn lẻ.

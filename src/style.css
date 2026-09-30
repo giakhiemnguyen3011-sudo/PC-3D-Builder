@@ -172,6 +172,27 @@ body, html {
   text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
 }
 
+#perf-readout {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-variant-numeric: tabular-nums;
+  min-width: 74px;
+  text-align: center;
+}
+
+/* Turns amber when the frame rate drops below comfortable, so the readout is
+   useful at a glance rather than just a number to decode. */
+#perf-readout.warn {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
 #shiftlock-status {
   padding: 6px 14px;
   border-radius: 20px;

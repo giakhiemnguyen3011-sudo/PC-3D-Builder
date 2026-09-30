@@ -8,10 +8,17 @@ import { PlayerControls } from '../controls/PlayerControls.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { BuildModeUI } from '../ui/BuildModeUI.js';
 import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
+import { PerformanceManager } from './PerformanceManager.js';
 import { sounds } from '../audio/SoundEffects.js';
 
 // Anything dropped below this height counts as "on the floor"
 const FLOOR_TOUCH_Y = 0.06;
+
+// How often the shadow depth map is redrawn when nothing has asked for it. At
+// 60 fps every 4th frame is 15 redraws a second, which is well past the point
+// where a shadow in a static room can be seen to move, and it cuts the shadow
+// pass to a quarter of the cost.
+const SHADOW_REFRESH_FRAMES = 4;
 
 export class Game {
   constructor() {
@@ -21,6 +28,11 @@ export class Game {
     this.initRenderer();
     this.initScene();
     this.initLighting();
+
+    // Needs the camera, so it comes after initScene.
+    this.perf = new PerformanceManager(this.renderer, this.camera, {
+      minScale: 0.5
+    });
 
     // Secondary 3D preview canvas for RPG Inventory
     const previewCanvas = document.getElementById('item-preview-canvas');
@@ -35,6 +47,7 @@ export class Game {
     // main thread free instead of stalling on hundreds of megabytes at once.
     this.loadingBarFill = document.getElementById('loading-bar-fill');
     this.loadingText = document.getElementById('loading-text');
+    this.perfReadout = document.getElementById('perf-readout');
     this.shelf = new ShelfHardware(this.scene, {
       perFrame: 4,
       onProgress: (loaded, total) => this.setLoadingProgress(loaded, total),
@@ -147,10 +160,23 @@ export class Game {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
+
+    // The room is tiny on the GPU (a few hundred meshes, well under 10k
+    // triangles), so fill rate is the only thing that decides the frame rate.
+    // That is also the one lever that scales cleanly: dropping the drawing
+    // buffer from 2x to 1x removes three quarters of the shaded pixels, where
+    // thinning out geometry would touch almost nothing.
+    //
+    // Shadows are the second-biggest recurring cost, because the default is to
+    // redraw the whole depth map every frame even though the room barely moves.
+    // 1024 over the 8 m shadow volume is ~8 mm per texel, which is ample for
+    // furniture-sized objects, and it is a quarter of the fill of 2048.
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.shadowDirty = true;
   }
 
   initScene() {
@@ -177,8 +203,8 @@ export class Game {
     const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.6);
     sunLight.position.set(-6, 5, 2);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
     sunLight.shadow.camera.near = 0.5;
     sunLight.shadow.camera.far = 16;
     sunLight.shadow.camera.left = -4;
@@ -218,6 +244,7 @@ export class Game {
     }
 
     this.placedItems.placeItemAt(item, dropPos);
+    this.markWorldChanged();
   }
 
   /** True when the aim point is the room floor rather than a bench or table. */
@@ -235,6 +262,7 @@ export class Game {
   returnToTable(item) {
     this.placedItems.removeItem(item.id);
     this.shelf.showItem(item.id);
+    this.markWorldChanged();
     sounds.playClick();
     this.showToast(`↩️ ${item.name} đã được trả về bàn linh kiện.`);
   }
@@ -299,6 +327,7 @@ export class Game {
     });
 
     this.showToast('🎉 Máy tính của bạn đã sẵn sàng! Cầm lên và xoay thoải mái nhé.');
+    this.markWorldChanged();
   }
 
   /**
@@ -317,6 +346,7 @@ export class Game {
     group.rotation.set(pose.x || 0, pose.y ?? pc.home.yaw, pose.z || 0);
     group.updateMatrixWorld(true);
     this.assembledPC = pc;
+    this.markWorldChanged();
   }
 
   /**
@@ -365,6 +395,7 @@ export class Game {
         }
         this.placedItems.placeItemAt(held, hit.point);
         this.heldItemManager.clearHeldItem();
+        this.markWorldChanged();
       }
       return;
     }
@@ -381,6 +412,7 @@ export class Game {
       prev.prebuilt.visible = false;
       if (prev.prebuilt.parent) prev.prebuilt.parent.remove(prev.prebuilt);
       this.heldItemManager.holdItem(prev);
+      this.markWorldChanged();
       return;
     }
 
@@ -397,6 +429,7 @@ export class Game {
       if (item) {
         this.placedItems.removeItem(item.id);
         this.heldItemManager.holdItem(item);
+        this.markWorldChanged();
       }
       return;
     }
@@ -407,6 +440,7 @@ export class Game {
       if (item) {
         this.shelf.hideItem(item.id);
         this.heldItemManager.holdItem(item);
+        this.markWorldChanged();
       }
     }
   }
@@ -436,6 +470,7 @@ export class Game {
       const added = this.inventoryUI.addItem(held);
       if (added) {
         this.heldItemManager.clearHeldItem();
+        this.markWorldChanged();
         sounds.playDrop();
       }
     }
@@ -445,13 +480,17 @@ export class Game {
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      // The performance manager owns the pixel ratio, so the resize has to go
+      // through it or the buffer would be reset to the display's native ratio
+      // and the frame rate would drop straight back.
+      this.perf.applyScale();
     });
   }
 
   animate() {
     requestAnimationFrame(() => this.animate());
 
+    const now = performance.now();
     const delta = Math.min(this.clock.getDelta(), 0.1);
     const time = this.clock.getElapsedTime();
 
@@ -459,20 +498,21 @@ export class Game {
     // while it is open is by far the biggest frame-time win we get, and it also
     // keeps the pointer lock from fighting the modal for the cursor.
     if (this.buildModeUI?.isOpen) {
-      this.buildModeUI.update(delta, performance.now());
+      this.buildModeUI.update(delta, now);
       return;
     }
 
-    const interactables = [
-      ...this.shelf.interactables,
-      ...this.placedItems.interactables,
-      ...this.room.interactables
-    ];
+    // Sampled only here, not above: Build Mode draws a different scene through a
+    // different renderer, and letting its timings steer the room's resolution
+    // would leave the room at the wrong scale for as long as it takes to notice.
+    // The gap this leaves is absorbed by the stall guard in `sample`.
+    this.perf.sample(now);
 
-    // Environment surfaces (tables, shelf, floor) for crosshair drop targeting
-    const surfaces = this.room.surfaces || [];
+    // The crosshair only needs re-testing when the player or the world has
+    // actually moved, so the target list is kept in one array instead of being
+    // rebuilt with three spreads on every frame.
+    this.controls.update(delta, this.getRaycastTargets());
 
-    this.controls.update(delta, interactables, surfaces);
     this.heldItemManager.update(delta, time);
     this.room.update(delta);
 
@@ -480,7 +520,81 @@ export class Game {
       this.previewScene.render();
     }
 
+    // The depth map is redrawn on a slow heartbeat rather than every frame. The
+    // room is static, so nothing visible changes between redraws; the only
+    // continuously moving object is the part in the player's hand, which is
+    // parented to the camera and never casts a useful shadow anyway.
+    // `markWorldChanged` forces an immediate redraw when the world does change.
+    this.frame = (this.frame || 0) + 1;
+    if (this.shadowDirty || this.frame % SHADOW_REFRESH_FRAMES === 0) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowDirty = false;
+    }
+
     this.renderer.render(this.scene, this.camera);
+    this.updatePerfReadout(now);
+  }
+
+  /**
+   * Refreshes the FPS / resolution readout a few times a second. Writing it
+   * every frame would cost more than it is worth, and a number that flickers at
+   * 60 Hz is unreadable anyway.
+   */
+  updatePerfReadout(now) {
+    if (!this.perfReadout) return;
+    if (now - (this.perfReadoutAt || 0) < 500) return;
+    this.perfReadoutAt = now;
+    const fps = Math.round(this.perf.fps);
+    const scale = Math.round(this.perf.scale * 100) / 100;
+    // Below the display's own ratio means the controller has stepped in
+    const label = scale >= this.perf.maxScale - 0.001 ? `${fps} FPS` : `${fps} FPS · ${scale}x`;
+    if (label === this.perfReadoutText) return;
+    this.perfReadoutText = label;
+    this.perfReadout.textContent = label;
+    this.perfReadout.classList.toggle('warn', this.perf.fps < 40);
+  }
+
+  /**
+   * The combined raycast target list: hardware, dropped parts, the case and the
+   * surfaces a part can be dropped onto. Rebuilt only when one of the sources
+   * reports a different length, which is all the hover test needs to stay honest.
+   */
+  getRaycastTargets() {
+    if (!this.raycastSources) {
+      this.raycastSources = [
+        this.shelf.interactables,
+        this.placedItems.interactables,
+        this.room.interactables,
+        this.room.surfaces
+      ];
+      this.raycastLengths = this.raycastSources.map(s => s.length);
+      this.raycastList = [];
+    }
+    const sources = this.raycastSources;
+    let changed = false;
+    for (let i = 0; i < sources.length; i++) {
+      if (sources[i].length !== this.raycastLengths[i]) {
+        this.raycastLengths[i] = sources[i].length;
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.raycastList.length = 0;
+      for (const s of sources) this.raycastList.push(...s);
+    }
+    return this.raycastList;
+  }
+
+  /**
+   * Signals that the world changed: something was picked up, dropped, shown or
+   * hidden. The hover test and the shadow map are both cached against the last
+   * frame, so anything that alters what is under the crosshair or what casts a
+   * shadow has to say so, otherwise the crosshair keeps highlighting a part
+   * that is no longer there.
+   */
+  markWorldChanged() {
+    this.controls?.markRaycastDirty();
+    this.shadowDirty = true;
   }
 
   showToast(message) {

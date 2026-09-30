@@ -1,6 +1,18 @@
 import * as THREE from 'three';
 import { getTableObstacle } from '../scene/shelfLayout.js';
 
+/**
+ * True when the object and every ancestor up to the root are drawn. A hidden
+ * part is normally only flagged on its own wrapper, and the wrapper's own
+ * parent chain is what decides whether the hit is real.
+ */
+function isVisibleChain(object) {
+  for (let node = object; node; node = node.parent) {
+    if (!node.visible) return false;
+  }
+  return true;
+}
+
 export class PlayerControls {
   constructor(camera, domElement, onInteract, onStow, onToggleInventory) {
     this.camera = camera;
@@ -24,6 +36,11 @@ export class PlayerControls {
     this.pitch = 0;
     this.yaw = 0;
 
+    // Scratch vectors for the movement maths, allocated once
+    this._forward = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this._moveDir = new THREE.Vector3();
+
     // Collision boundaries (room walls and central table)
     this.bounds = { minX: -5.4, maxX: 5.4, minZ: -4.4, maxZ: 4.4 };
     this.obstacles = [
@@ -37,9 +54,40 @@ export class PlayerControls {
     this.hoveredObject = null;
     this.lastRaycastHit = null;
 
+    // The hover raycast was the single most expensive thing in the frame, at
+    // roughly 1 ms - two thirds of all the script work - because it walked every
+    // mesh in the room sixty times a second. The result only changes when the
+    // camera or the world does, so it is cached against the pose it was taken
+    // from and only redone when that pose actually differs.
+    this.lastRayPos = new THREE.Vector3(NaN, NaN, NaN);
+    this.lastRayQuat = new THREE.Quaternion(NaN, NaN, NaN, NaN);
+    this.rayDirty = true;
+
+    // Cached HUD nodes and the last values written to them. Writing
+    // `textContent` or `style.display` every frame is cheap on its own but
+    // invalidates style and layout for the whole document, so both are only
+    // touched when the value actually changes.
+    this.hud = {
+      crosshair: document.getElementById('crosshair'),
+      prompt: document.getElementById('hud-prompt'),
+      promptText: document.getElementById('hud-prompt')?.querySelector('.prompt-text') || null
+    };
+    this.lastPromptText = null;
+    this.lastPromptShown = false;
+    this.lastHighlighted = false;
+
     this.setupPointerLock();
     this.setupKeyboard();
     this.setupMouse();
+  }
+
+  /**
+   * Forces the hover test to run on the next update. The world calls this when
+   * something appears, disappears or moves, so the crosshair never lags behind
+   * a part that was just picked up.
+   */
+  markRaycastDirty() {
+    this.rayDirty = true;
   }
 
   setupPointerLock() {
@@ -191,7 +239,30 @@ export class PlayerControls {
     return false;
   }
 
-  update(delta, interactables = [], environmentSurfaces = []) {
+  /**
+   * True when the crosshair ray would land somewhere different than last frame.
+   * The camera pose is the only thing that moves the ray on its own; everything
+   * else in the world signals its changes through `markRaycastDirty`.
+   */
+  rayMoved() {
+    const p = this.camera.position;
+    const q = this.camera.quaternion;
+    if (p.x !== this.lastRayPos.x || p.y !== this.lastRayPos.y || p.z !== this.lastRayPos.z) return true;
+    if (
+      q.x !== this.lastRayQuat.x || q.y !== this.lastRayQuat.y ||
+      q.z !== this.lastRayQuat.z || q.w !== this.lastRayQuat.w
+    ) return true;
+    return false;
+  }
+
+  /**
+   * @param {number} delta
+   * @param {THREE.Object3D[]} targets everything the crosshair may hit, as one
+   *   list: hardware, dropped parts, the case, and the surfaces a part can be
+   *   dropped onto. Interactables still win over surfaces, because a tagged
+   *   ancestor is looked up first.
+   */
+  update(delta, targets = []) {
     // 1. Calculate inputs
     const inputForward = (this.moveForward ? 1 : 0) - (this.moveBackward ? 1 : 0);
     const inputRight = (this.moveRight ? 1 : 0) - (this.moveLeft ? 1 : 0);
@@ -199,10 +270,12 @@ export class PlayerControls {
     // 2. Camera-relative horizontal direction vectors:
     // forward: looking direction projected on horizontal X-Z plane
     // right: perpendicular vector pointing 90 deg clockwise to the right
-    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    // Reused vectors: this runs every frame, and three fresh Vector3s per frame
+    // is 180 allocations a second for values that never escape this method.
+    const forward = this._forward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const right = this._right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
 
-    const moveDir = new THREE.Vector3(0, 0, 0);
+    const moveDir = this._moveDir.set(0, 0, 0);
     if (inputForward !== 0 || inputRight !== 0) {
       moveDir.addScaledVector(forward, inputForward);
       moveDir.addScaledVector(right, inputRight);
@@ -231,77 +304,103 @@ export class PlayerControls {
     this.camera.position.y = 1.65; // Eye height
 
     // 4. Raycasting for object hover and surface targeting
-    const crosshairEl = document.getElementById('crosshair');
-    if (this.isLocked) {
-      this.raycaster.setFromCamera(this.center, this.camera);
+    if (!this.isLocked) {
+      this.hoveredObject = null;
+      this.lastRaycastHit = null;
+      this.setHighlight(false);
+      this.setPrompt(null);
+      this.lastRayPos.copy(this.camera.position);
+      this.lastRayQuat.copy(this.camera.quaternion);
+      this.rayDirty = false;
+      return;
+    }
 
-      // Check interactable hardware / case objects first
-      const allTargets = [...interactables, ...environmentSurfaces];
-      const intersects = this.raycaster.intersectObjects(allTargets, true);
+    if (this.rayDirty || this.rayMoved()) {
+      this.lastRayPos.copy(this.camera.position);
+      this.lastRayQuat.copy(this.camera.quaternion);
+      this.rayDirty = false;
+      // The camera's world matrix is otherwise only refreshed by the renderer,
+      // which runs after this, so without this the ray would be aimed with the
+      // previous frame's orientation.
+      this.camera.updateMatrixWorld();
+      this.raycaster.setFromCamera(this.center, this.camera);
+      const intersects = this.raycaster.intersectObjects(targets, true);
 
       let foundInteractable = null;
       let surfaceHit = null;
 
       for (const hit of intersects) {
-        if (hit.distance < 4.0) {
-          let curr = hit.object;
-          while (curr && !curr.userData?.type && !curr.userData?.snapType && !curr.userData?.itemId && curr.parent) {
-            curr = curr.parent;
-          }
-          if (curr && (curr.userData?.type || curr.userData?.snapType || curr.userData?.itemId)) {
-            foundInteractable = curr;
-            surfaceHit = hit;
-            break;
-          }
-          // If hit an environment surface (table, shelf, floor)
-          if (!surfaceHit && (hit.object.isMesh || hit.point)) {
-            surfaceHit = hit;
-          }
+        // `intersects` is sorted near-to-far, so once the reach is exceeded
+        // nothing later can be a candidate either.
+        if (hit.distance >= 4.0) break;
+        // three.js happily raycasts objects that are not drawn, and taking a
+        // part off the shelf only sets `visible = false` rather than removing
+        // it. Without this, a part that had already been picked up stayed
+        // highlighted and could be clicked again while invisible.
+        if (!isVisibleChain(hit.object)) continue;
+        let curr = hit.object;
+        while (curr && !curr.userData?.type && !curr.userData?.snapType && !curr.userData?.itemId && curr.parent) {
+          curr = curr.parent;
+        }
+        if (curr && (curr.userData?.type || curr.userData?.snapType || curr.userData?.itemId)) {
+          foundInteractable = curr;
+          surfaceHit = hit;
+          break;
+        }
+        // If hit an environment surface (table, shelf, floor)
+        if (!surfaceHit && (hit.object.isMesh || hit.point)) {
+          surfaceHit = hit;
         }
       }
 
       this.hoveredObject = foundInteractable;
       this.lastRaycastHit = surfaceHit;
-
-      if (crosshairEl) {
-        crosshairEl.classList.toggle('highlight', !!foundInteractable);
-      }
-      this.updateHUDPrompt(foundInteractable, surfaceHit);
-    } else {
-      this.hoveredObject = null;
-      this.lastRaycastHit = null;
-      if (crosshairEl) crosshairEl.classList.remove('highlight');
-      this.updateHUDPrompt(null, null);
+      this.setHighlight(!!foundInteractable);
+      this.setPrompt(foundInteractable);
     }
   }
 
-  updateHUDPrompt(hovered, hit) {
-    const prompt = document.getElementById('hud-prompt');
+  /** Only touches the DOM when the crosshair highlight actually flips. */
+  setHighlight(on) {
+    if (on === this.lastHighlighted) return;
+    this.lastHighlighted = on;
+    this.hud.crosshair?.classList.toggle('highlight', on);
+  }
+
+  /** Only touches the DOM when the prompt text or its visibility changes. */
+  setPrompt(hovered) {
+    const text = hovered ? this.promptTextFor(hovered.userData) : null;
+    if (text === this.lastPromptText && !!text === this.lastPromptShown) return;
+    this.lastPromptText = text;
+    this.lastPromptShown = !!text;
+    const prompt = this.hud.prompt;
     if (!prompt) return;
+    prompt.style.display = text ? 'flex' : 'none';
+    if (text && this.hud.promptText) this.hud.promptText.textContent = text;
+  }
 
-    if (!hovered) {
-      prompt.style.display = 'none';
-      return;
-    }
-
-    prompt.style.display = 'flex';
-    const textEl = prompt.querySelector('.prompt-text');
-    const uData = hovered.userData;
-
+  promptTextFor(uData = {}) {
     if (uData.itemId) {
-      textEl.textContent = `[Chuột trái] Nhặt ${uData.itemName || 'Linh kiện'}`;
-    } else if (uData.type === 'glass_side') {
-      textEl.textContent = `[Chuột trái] Tháo / Lắp Nắp kính thùng máy`;
-    } else if (uData.type === 'power_button') {
-      textEl.textContent = `[Chuột trái] BẬT NGUỒN MÁY TÍNH`;
-    } else if (uData.type === 'cables') {
-      textEl.textContent = `[Chuột trái] Cắm Dây nguồn & Cáp tín hiệu`;
-    } else if (uData.snapType) {
-      textEl.textContent = `[Chuột trái] Lắp ráp: ${uData.snapType.toUpperCase()}`;
-    } else if (uData.type === 'computerCase') {
-      textEl.textContent = `[Chuột trái] Mở Menu Thùng Máy`;
-    } else if (uData.type === 'monitor') {
-      textEl.textContent = `[Chuột trái] Cắm cáp màn hình`;
+      return `[Chuột trái] Nhặt ${uData.itemName || 'Linh kiện'}`;
     }
+    if (uData.type === 'glass_side') {
+      return `[Chuột trái] Tháo / Lắp Nắp kính thùng máy`;
+    }
+    if (uData.type === 'power_button') {
+      return `[Chuột trái] BẬT NGUỒN MÁY TÍNH`;
+    }
+    if (uData.type === 'cables') {
+      return `[Chuột trái] Cắm Dây nguồn & Cáp tín hiệu`;
+    }
+    if (uData.snapType) {
+      return `[Chuột trái] Lắp ráp: ${uData.snapType.toUpperCase()}`;
+    }
+    if (uData.type === 'computerCase') {
+      return `[Chuột trái] Mở Menu Thùng Máy`;
+    }
+    if (uData.type === 'monitor') {
+      return `[Chuột trái] Cắm cáp màn hình`;
+    }
+    return null;
   }
 }

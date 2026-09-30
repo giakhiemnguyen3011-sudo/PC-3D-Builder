@@ -678,12 +678,20 @@ export class Room {
   update(delta) {
     if (this.monitorState === 'POST') {
       this.postProgress += delta * 0.4;
-      this.renderMonitorScreen();
+      // This redraw repaints a 2D canvas and re-uploads the whole monitor
+      // texture, which is one of the more expensive things that can happen in a
+      // frame. The POST animation lasts a couple of seconds, so a fifth of a
+      // second is still smooth on screen while cutting the cost to a fifth.
+      this.postRefresh = (this.postRefresh || 0) + delta;
       if (this.postProgress >= 1.0) {
         this.setMonitorState('OS');
+      } else if (this.postRefresh >= 0.2) {
+        this.postRefresh = 0;
+        this.renderMonitorScreen();
       }
     }
   }
+
 
   /** Hides the empty case prop once the player has a real built machine. */
   hideCasePlaceholder() {
