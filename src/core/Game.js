@@ -8,7 +8,6 @@ import { PlayerControls } from '../controls/PlayerControls.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { BuildModeUI } from '../ui/BuildModeUI.js';
 import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
-import { PerformanceManager } from './PerformanceManager.js';
 import { sounds } from '../audio/SoundEffects.js';
 
 // Anything dropped below this height counts as "on the floor"
@@ -29,11 +28,6 @@ export class Game {
     this.initScene();
     this.initLighting();
 
-    // Needs the camera, so it comes after initScene.
-    this.perf = new PerformanceManager(this.renderer, this.camera, {
-      minScale: 0.5
-    });
-
     // Secondary 3D preview canvas for RPG Inventory
     const previewCanvas = document.getElementById('item-preview-canvas');
     this.previewScene = new ItemPreviewScene(previewCanvas);
@@ -47,7 +41,6 @@ export class Game {
     // main thread free instead of stalling on hundreds of megabytes at once.
     this.loadingBarFill = document.getElementById('loading-bar-fill');
     this.loadingText = document.getElementById('loading-text');
-    this.perfReadout = document.getElementById('perf-readout');
     this.shelf = new ShelfHardware(this.scene, {
       perFrame: 4,
       onProgress: (loaded, total) => this.setLoadingProgress(loaded, total),
@@ -163,18 +156,12 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
 
-    // The room is tiny on the GPU (a few hundred meshes, well under 10k
-    // triangles), so fill rate is the only thing that decides the frame rate.
-    // That is also the one lever that scales cleanly: dropping the drawing
-    // buffer from 2x to 1x removes three quarters of the shaded pixels, where
-    // thinning out geometry would touch almost nothing.
-    //
-    // Shadows are the second-biggest recurring cost, because the default is to
-    // redraw the whole depth map every frame even though the room barely moves.
-    // 1024 over the 8 m shadow volume is ~8 mm per texel, which is ample for
-    // furniture-sized objects, and it is a quarter of the fill of 2048.
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // The room is static, so redrawing the depth map every frame is wasted work.
+    // This is the one performance change kept from the last pass: it costs no
+    // image quality at all, because the shadow map still holds exactly the same
+    // image - it is simply refreshed on a heartbeat instead of 60 times a second.
     this.renderer.shadowMap.autoUpdate = false;
     this.shadowDirty = true;
   }
@@ -203,8 +190,8 @@ export class Game {
     const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.6);
     sunLight.position.set(-6, 5, 2);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 0.5;
     sunLight.shadow.camera.far = 16;
     sunLight.shadow.camera.left = -4;
@@ -480,10 +467,7 @@ export class Game {
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
-      // The performance manager owns the pixel ratio, so the resize has to go
-      // through it or the buffer would be reset to the display's native ratio
-      // and the frame rate would drop straight back.
-      this.perf.applyScale();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
   }
 
@@ -501,12 +485,6 @@ export class Game {
       this.buildModeUI.update(delta, now);
       return;
     }
-
-    // Sampled only here, not above: Build Mode draws a different scene through a
-    // different renderer, and letting its timings steer the room's resolution
-    // would leave the room at the wrong scale for as long as it takes to notice.
-    // The gap this leaves is absorbed by the stall guard in `sample`.
-    this.perf.sample(now);
 
     // The crosshair only needs re-testing when the player or the world has
     // actually moved, so the target list is kept in one array instead of being
@@ -532,57 +510,36 @@ export class Game {
     }
 
     this.renderer.render(this.scene, this.camera);
-    this.updatePerfReadout(now);
-  }
-
-  /**
-   * Refreshes the FPS / resolution readout a few times a second. Writing it
-   * every frame would cost more than it is worth, and a number that flickers at
-   * 60 Hz is unreadable anyway.
-   */
-  updatePerfReadout(now) {
-    if (!this.perfReadout) return;
-    if (now - (this.perfReadoutAt || 0) < 500) return;
-    this.perfReadoutAt = now;
-    const fps = Math.round(this.perf.fps);
-    const scale = Math.round(this.perf.scale * 100) / 100;
-    // Below the display's own ratio means the controller has stepped in
-    const label = scale >= this.perf.maxScale - 0.001 ? `${fps} FPS` : `${fps} FPS · ${scale}x`;
-    if (label === this.perfReadoutText) return;
-    this.perfReadoutText = label;
-    this.perfReadout.textContent = label;
-    this.perfReadout.classList.toggle('warn', this.perf.fps < 40);
   }
 
   /**
    * The combined raycast target list: hardware, dropped parts, the case and the
-   * surfaces a part can be dropped onto. Rebuilt only when one of the sources
-   * reports a different length, which is all the hover test needs to stay honest.
+   * surfaces a part can be dropped onto.
+   *
+   * Rebuilt every frame into one reused array. Caching it on a length check does
+   * not work here: `ShelfHardware._swapIn()` removes a placeholder and pushes the
+   * real model in the same step, so the list is edited in place with no change in
+   * length, and a cached copy silently keeps pointing at the discarded
+   * placeholders - which leaves nothing on the bench reachable by the crosshair.
+   * Refilling costs nothing measurable for a few dozen entries; the raycast it
+   * feeds is gated separately on whether the camera actually moved.
    */
   getRaycastTargets() {
-    if (!this.raycastSources) {
+    if (!this.raycastList) {
       this.raycastSources = [
         this.shelf.interactables,
         this.placedItems.interactables,
         this.room.interactables,
         this.room.surfaces
       ];
-      this.raycastLengths = this.raycastSources.map(s => s.length);
       this.raycastList = [];
     }
-    const sources = this.raycastSources;
-    let changed = false;
-    for (let i = 0; i < sources.length; i++) {
-      if (sources[i].length !== this.raycastLengths[i]) {
-        this.raycastLengths[i] = sources[i].length;
-        changed = true;
-      }
+    const list = this.raycastList;
+    list.length = 0;
+    for (const source of this.raycastSources) {
+      for (let i = 0; i < source.length; i++) list.push(source[i]);
     }
-    if (changed) {
-      this.raycastList.length = 0;
-      for (const s of sources) this.raycastList.push(...s);
-    }
-    return this.raycastList;
+    return list;
   }
 
   /**
