@@ -989,6 +989,20 @@ body, html {
   color: #cbd5e1;
 }
 
+/* The turn readout only lights up once the chassis is off its authored angle,
+   which is the moment the player might want to square it up again. */
+#build-turn-tag.turned {
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fbbf24;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Grabbing the case to turn it, so the cursor says so instead of pretending
+   the right button is idle. */
+body.build-turning #build-case-canvas {
+  cursor: grabbing;
+}
+
 .build-glass-btn {
   pointer-events: auto;
   font-size: 11px;

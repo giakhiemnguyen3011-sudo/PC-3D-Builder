@@ -36,6 +36,8 @@ export class BuildModeUI {
     this.currentStep = 1;
     this.selectedItem = null;
     this.pendingPress = null;   // part waiting to be latched down
+    this.turning = null;        // non-null while the right button is held down
+
     this.pasteApplied = false;   // thermal paste on the CPU IHS
     this.cableTargets = [];
     this.postTimers = [];
@@ -61,6 +63,8 @@ export class BuildModeUI {
       glassBtn: document.getElementById('btn-toggle-glass'),
       glassTag: document.getElementById('glass-status-tag'),
       zoomTag: document.getElementById('build-zoom-tag'),
+      turnTag: document.getElementById('build-turn-tag'),
+
       hint: document.getElementById('build-zone-hint'),
       toast: document.getElementById('build-toast'),
       actionBar: document.getElementById('build-action-bar'),
@@ -87,19 +91,37 @@ export class BuildModeUI {
     });
 
     window.addEventListener('keydown', e => {
-      if (this.isOpen && e.code === 'Escape') {
+      if (!this.isOpen) return;
+      if (e.code === 'Escape') {
         e.preventDefault();
         this.close();
+        return;
+      }
+      // Home squares the case up again. Without an obvious way back, a case
+      // turned onto its side would leave the build zone unreadable.
+      if (e.code === 'Home') {
+        e.preventDefault();
+        this.resetCaseTurn();
       }
     });
+
+    // A turn that ends outside the window, or the pointer being released over
+    // another element, would otherwise leave the chassis stuck to the cursor.
+    window.addEventListener('pointerup', () => this.endTurn());
+    window.addEventListener('pointercancel', () => this.endTurn());
+    window.addEventListener('blur', () => this.endTurn());
+
 
     if (canvas) {
       canvas.addEventListener('pointermove', e => this.onPointerMove(e));
       canvas.addEventListener('pointerenter', e => this.onPointerMove(e));
       canvas.addEventListener('pointerleave', () => this.onPointerLeave());
       canvas.addEventListener('pointerdown', e => this.onPointerDown(e));
+      canvas.addEventListener('pointerup', e => this.onPointerUp(e));
       canvas.addEventListener('contextmenu', e => e.preventDefault());
-      // Scroll wheel zooms the Build Zone; the case itself stays locked
+      // Scroll wheel zooms the Build Zone. Turning the case is on the right mouse
+      // button, because the left one is already busy with screws, paste and
+      // seating a part, and the wheel is the only free zoom on a modal.
       canvas.addEventListener('wheel', e => {
         e.preventDefault();
         if (!this.scene) return;
@@ -109,11 +131,46 @@ export class BuildModeUI {
     }
   }
 
+
   setZoomBadge() {
     const el = this.dom.zoomTag;
     if (!el || !this.scene) return;
     el.textContent = `🔍 Thu phóng ${Math.round(this.scene.zoom * 100)}%`;
   }
+
+  /**
+   * Shows how far the case has been turned, in whole degrees, so the player can
+   * tell at a glance that the chassis is off its authored angle and press Home
+   * to square it up again.
+   */
+  setTurnBadge() {
+    const el = this.dom.turnTag;
+    if (!el || !this.scene) return;
+    const { x, y, z } = this.scene.caseRotation;
+    const deg = r => Math.round(THREE.MathUtils.radToDeg(r));
+    if (!this.scene.isCaseTurned) {
+      const text = '🔄 Chuột phải: xoay thùng';
+      if (el.textContent !== text) el.textContent = text;
+      el.classList.remove('turned');
+      return;
+    }
+    const text = `🔄 Xoay  X${deg(y)}°  Y${deg(x)}°  Z${deg(z)}°`;
+    if (el.textContent !== text) el.textContent = text;
+    el.classList.add('turned');
+  }
+
+  /** Transient banner explaining the roll gesture while Shift is held. */
+  showTurnHint(on) {
+    const el = this.dom.hint;
+    if (!el) return;
+    if (on) {
+      el.textContent = 'Lăn chuột dọc để xoay ngang (trục Z)';
+      el.style.display = 'flex';
+    } else {
+      this.setZoneHint(null);
+    }
+  }
+
 
   // ------------------------------------------------------------ lifecycle
   open() {
@@ -121,9 +178,14 @@ export class BuildModeUI {
     this.dom.modal.classList.add('active');
     this.isOpen = true;
     sounds.playClick();
+    // Each build session starts from the authored angle, so a case left on its
+    // side by the last run cannot greet the player that way.
+    this.scene?.resetCaseTurn();
+    this.setTurnBadge();
     this.renderStep();
     this.renderChecklist();
     this.renderSlots();
+
     if (this.scene) {
       this.scene.resize();
       this.scene.setFocusZone(this.activeStep()?.zone || null);
@@ -159,12 +221,14 @@ export class BuildModeUI {
     this.clearPostTimers();
     this.dom.modal.classList.remove('active');
     this.isOpen = false;
+    this.endTurn();
     this.scene?.clearPointer();
     this.scene?.clearGhost();
     this.setZoneHint(null);
     this.setToast(null);
     this.onRequestLock?.();
   }
+
 
   reset() {
     this.completed.clear();
@@ -309,6 +373,22 @@ export class BuildModeUI {
 
   onPointerMove(e) {
     if (!this.scene) return;
+
+    // Turning the case: the delta is taken against the previous position and the
+    // ghost is deliberately not refreshed, otherwise it would chase the cursor
+    // across the interior while the player is trying to turn the chassis.
+    if (this.turning) {
+      const dx = e.clientX - this.turning.x;
+      const dy = e.clientY - this.turning.y;
+      this.turning.x = e.clientX;
+      this.turning.y = e.clientY;
+      const step = 0.0085;
+      if (this.turning.roll) this.scene.rotateCase(0, 0, dy * step);
+      else this.scene.rotateCase(-dx * step, -dy * step, 0);
+      this.setTurnBadge();
+      return;
+    }
+
     this.scene.setPointer(e.clientX, e.clientY);
     this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
     this.updateCursorHint();
@@ -316,14 +396,65 @@ export class BuildModeUI {
 
   onPointerLeave() {
     if (!this.scene) return;
+    if (this.turning) return;
     this.scene.clearPointer();
     this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
     this.setZoneHint(null);
   }
 
+  onPointerUp(e) {
+    if (e.button === 2) this.endTurn();
+  }
+
+  /** Squares the chassis back to its authored angle. */
+  resetCaseTurn() {
+    if (!this.scene) return;
+    this.endTurn();
+    this.scene.resetCaseTurn();
+    this.setTurnBadge();
+    this.setToast('Đã xoay thùng máy về góc mặc định.');
+    this.refreshGhost();
+  }
+
+  endTurn() {
+    if (!this.turning) return;
+    const wasRoll = this.turning.roll;
+    // Pointer moves are swallowed during a turn, so the scene's cursor position is
+    // whatever it was when the button went down. Re-seat it on the last known spot
+    // or the ghost reappears somewhere the player has long since left.
+    this.scene.setPointer(this.turning.x, this.turning.y);
+    this.turning = null;
+    this.scene.caseTurnActive = false;
+    document.body.classList.remove('build-turning');
+    if (wasRoll) this.showTurnHint(false);
+    // The cursor may now be over something new, so re-seat the ghost on the part
+    this.refreshGhost();
+  }
+
+  /** Re-runs the ghost after something invalidated its cached pointer position. */
+  refreshGhost() {
+    if (!this.scene) return;
+    this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
+    this.updateCursorHint();
+  }
+
   async onPointerDown(e) {
-    if (!this.scene || e.button !== 0) return;
+    if (!this.scene) return;
+
+    // Right mouse button turns the case. Every installed part is parented to the
+    // same group as the chassis, so the whole machine comes round together and
+    // nothing has to be re-seated.
+    if (e.button === 2) {
+      this.turning = { x: e.clientX, y: e.clientY, roll: !!e.shiftKey };
+      this.scene.caseTurnActive = true;
+      document.body.classList.add('build-turning');
+      if (e.shiftKey) this.showTurnHint(true);
+      return;
+    }
+    if (e.button !== 0) return;
+
     this.scene.setPointer(e.clientX, e.clientY);
+
     const step = this.activeStep();
     if (!step) return;
     const zoneId = step.zone;
