@@ -174,8 +174,12 @@ export const CASE_ZONES = {
     label: 'Vị trí bo mạch chủ ATX',
     anchor: [TRAY.face + 0.002, boardCentreY, boardCentreZ],
     size: [0.006, boardHeight, boardLength],
-    // board stands upright in the tray, components towards the glass
-    mount: { long: [0, 1, 0], thin: [1, 0, 0] },
+    // Same ATX fit as authored: 305mm runs vertically in the tray, the 45mm
+    // thickness faces the glass. The long edge maps to -Y (not +Y) so the board
+    // is carried 180°-flipped in its own spot, which puts the printed CPU
+    // socket at the heated region (the cpu anchor's tray cutout) rather than
+    // mirrored onto the opposite corner.
+    mount: { long: [0, -1, 0], thin: [1, 0, 0] },
     face: [1, 0, 0],
     faceLift: 0.014,
     // the real ATX hole pattern - one hole sits under the fan notch, so this
@@ -209,8 +213,9 @@ export const CASE_ZONES = {
     label: 'Khe RAM DDR4 (cắm khe 2 & 4)',
     anchor: [TRAY.face + 0.008, BOARD.bottom + 0.1, BOARD.z1 - 0.045],
     size: [0.014, 0.05, 0.132],
-    // DIMM stands in its slot with the light bar towards the glass
-    mount: { long: [0, 1, 0], thin: [1, 0, 0] },
+    // DIMM stands in its slot, long edge running along the slot (front to back),
+    // thin edge towards the glass, and its 45mm width standing upright
+    mount: { long: [0, 0, 1], thin: [1, 0, 0] },
     face: [1, 0, 0],
     faceLift: 0.012,
     screws: 0

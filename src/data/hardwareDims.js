@@ -52,8 +52,9 @@ export const HARDWARE_REAL_DIMS = {
     length: 0.1334,
     width: 0.045,
     height: 0.007,
-    // the stick stands in its slot: long edge up, PCB facing the glass
-    mount: { length: [0, 1, 0], width: [0, 0, 1], height: [1, 0, 0] }
+    // the stick stands in its slot: long edge along the slot, thin edge to the
+    // glass, 45mm width upright
+    mount: { length: [0, 0, 1], width: [0, 1, 0], height: [1, 0, 0] }
   },
   storage: {
     // 2.5" SATA SSD: 100 x 70 x 7 mm

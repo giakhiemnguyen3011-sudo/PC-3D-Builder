@@ -618,7 +618,12 @@ export class BuildScene {
       mesh.material.color.setHex(
         locked ? ZONE_TINT.locked : isThis ? ZONE_TINT[state] : 0xffffff
       );
-      mesh.visible = locked || isThis;
+      // Only the step currently being worked shows its serve line. Placing a
+      // part locks its zone (step `placePart` sets `lockedZone` and calls this
+      // with 'locked'), so the highlight must disappear once the part has gone
+      // down. Otherwise every filled zone stayed overlaid on top of the real
+      // hardware and washed out the view.
+      mesh.visible = isThis && state !== 'locked' && this.lockedZone !== id;
     });
   }
 
