@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
   --bg-dark: #0a0f18;
@@ -999,7 +999,7 @@ body, html {
 
 /* Grabbing the case to turn it, so the cursor says so instead of pretending
    the right button is idle. */
-body.build-turning #build-case-canvas {
+body.build-orbiting #build-case-canvas {
   cursor: grabbing;
 }
 

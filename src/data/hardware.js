@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Hardware Components Database
  * Contains realistic technical specifications, tags, 3D model paths, educational notes,
  * real-world dimensions in metres, and crisp SVG icons for Inventory slots.
@@ -19,41 +19,6 @@ import { HARDWARE_CATEGORIES } from './hardwareCategories.js';
 import { HARDWARE_VARIANTS } from './hardwareVariants.js';
 
 export const HARDWARE_ITEMS = [
-  {
-    id: 'mb_asus_z370',
-    name: 'ASUS ROG STRIX Z370-E GAMING',
-    category: HARDWARE_CATEGORIES.MOTHERBOARD,
-    categoryKey: 'motherboard',
-    tag: 'Motherboard',
-    modelPath: '/models/Motherboard_model/rog_strix_z370-e_gaming_motherboard_3d_model.glb',
-    brand: 'ASUS Republic of Gamers',
-    price: '4,890,000 đ',
-    realSize: 0.305,
-    footprint: { length: 0.305, depth: 0.252 },
-
-    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="6" y="6" width="52" height="52" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-      <rect x="14" y="14" width="16" height="16" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
-      <rect x="18" y="18" width="8" height="8" fill="#fbbf24"/>
-      <rect x="36" y="14" width="4" height="24" rx="1" fill="#38bdf8"/>
-      <rect x="44" y="14" width="4" height="24" rx="1" fill="#38bdf8"/>
-      <rect x="14" y="38" width="34" height="6" rx="1" fill="#22c55e"/>
-      <rect x="14" y="48" width="24" height="4" rx="1" fill="#a855f7"/>
-    </svg>`,
-    specs: [
-      { label: 'Socket', value: 'LGA 1151 (Intel Core Gen 8/9)' },
-      { label: 'Chipset', value: 'Intel Z370 Express Chipset' },
-      { label: 'Kích thước Form Factor', value: 'ATX (30.5 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '4x DDR4 DIMM (Tối đa 64GB, 4000MHz OC)' },
-      { label: 'Khe PCIe', value: '2x PCIe 3.0 x16 SafeSlot, 4x PCIe x1' },
-      { label: 'Cổng M.2 & SATA', value: '2x M.2 NVMe PCIe 3.0 x4, 6x SATA III 6Gb/s' },
-      { label: 'Âm thanh', value: 'ROG SupremeFX S1220A 8-Channel HD Audio' },
-      { label: 'Kết nối mạng', value: 'Intel I219-V Gigabit LAN & Wi-Fi 802.11ac' },
-      { label: 'LED RGB', value: 'ASUS Aura Sync RGB Header' }
-    ],
-    description: 'Bo mạch chủ chuẩn Gaming cao cấp trang bị tản nhiệt VRM dày bản, tích hợp Wi-Fi AC và âm thanh SupremeFX S1220A chuyên nghiệp.',
-    beginnerTip: '💡 Bo mạch chủ là nền móng kết nối tất cả linh kiện. Lắp CPU, RAM và SSD M.2 lên bo mạch chủ trước khi gắn vào thùng case để dễ thao tác nhất!'
-  },
   {
     id: 'cpu_ryzen_3600',
     name: 'AMD Ryzen 5 3600 Processor',

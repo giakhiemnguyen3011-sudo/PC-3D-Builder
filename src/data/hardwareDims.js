@@ -86,7 +86,6 @@ export const HARDWARE_REAL_DIMS_OVERRIDES = {
   gpu_rx_480: { length: 0.240, width: 0.115, height: 0.030 },
   gpu_gold_edition: { length: 0.280, width: 0.120, height: 0.040 },
   cooler_noctua_nh_c12: { length: 0.124, width: 0.120, height: 0.065 },
-  mb_asus_prime_b450: { length: 0.244, width: 0.244, height: 0.045 },
   mb_gigabyte_h61: { length: 0.244, width: 0.244, height: 0.045 },
   ram_crucial_8gb: { width: 0.031 },
   ram_generic_ddr4: { width: 0.031 },

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import confetti from 'canvas-confetti';
 import { sounds } from '../audio/SoundEffects.js';
 import { BuildScene } from '../scene/BuildScene.js';
@@ -36,7 +36,8 @@ export class BuildModeUI {
     this.currentStep = 1;
     this.selectedItem = null;
     this.pendingPress = null;   // part waiting to be latched down
-    this.turning = null;        // non-null while the right button is held down
+    this.orbiting = false;     // true while the right button is held down
+    this._orbitLast = { x: 0, y: 0 };
 
     this.pasteApplied = false;   // thermal paste on the CPU IHS
     this.cableTargets = [];
@@ -97,19 +98,20 @@ export class BuildModeUI {
         this.close();
         return;
       }
-      // Home squares the case up again. Without an obvious way back, a case
-      // turned onto its side would leave the build zone unreadable.
+      // Home pulls the eye back to the authored front view. Without an obvious
+      // way back, an orbit that left the glass side turned away would make the
+      // build zone hard to read.
       if (e.code === 'Home') {
         e.preventDefault();
-        this.resetCaseTurn();
+        this.resetView();
       }
     });
 
-    // A turn that ends outside the window, or the pointer being released over
-    // another element, would otherwise leave the chassis stuck to the cursor.
-    window.addEventListener('pointerup', () => this.endTurn());
-    window.addEventListener('pointercancel', () => this.endTurn());
-    window.addEventListener('blur', () => this.endTurn());
+    // An orbit that ends outside the window, or the button being released over
+    // another element, would otherwise leave the view stuck to the cursor.
+    window.addEventListener('pointerup', () => this.endOrbit());
+    window.addEventListener('pointercancel', () => this.endOrbit());
+    window.addEventListener('blur', () => this.endOrbit());
 
 
     if (canvas) {
@@ -119,8 +121,8 @@ export class BuildModeUI {
       canvas.addEventListener('pointerdown', e => this.onPointerDown(e));
       canvas.addEventListener('pointerup', e => this.onPointerUp(e));
       canvas.addEventListener('contextmenu', e => e.preventDefault());
-      // Scroll wheel zooms the Build Zone. Turning the case is on the right mouse
-      // button, because the left one is already busy with screws, paste and
+      // Scroll wheel zooms the Build Zone. Orbiting the camera is on the right
+      // mouse button, because the left one is already busy with screws, paste and
       // seating a part, and the wheel is the only free zoom on a modal.
       canvas.addEventListener('wheel', e => {
         e.preventDefault();
@@ -139,36 +141,23 @@ export class BuildModeUI {
   }
 
   /**
-   * Shows how far the case has been turned, in whole degrees, so the player can
-   * tell at a glance that the chassis is off its authored angle and press Home
-   * to square it up again.
+   * Shows that the view has been dragged off the authored front angle, which is
+   * the moment the player might want to pull it square again with Home.
    */
-  setTurnBadge() {
+  setViewBadge() {
     const el = this.dom.turnTag;
     if (!el || !this.scene) return;
-    const { x, y, z } = this.scene.caseRotation;
     const deg = r => Math.round(THREE.MathUtils.radToDeg(r));
-    if (!this.scene.isCaseTurned) {
-      const text = '🔄 Chuột phải: xoay thùng';
+    const off = this.scene.isOrbitingOff;
+    if (!off) {
+      const text = '🔄 Chuột phải: xoay góc nhìn';
       if (el.textContent !== text) el.textContent = text;
       el.classList.remove('turned');
       return;
     }
-    const text = `🔄 Xoay  X${deg(y)}°  Y${deg(x)}°  Z${deg(z)}°`;
+    const text = `🔄 Góc nhìn  ↗${deg(this.scene.orbitYaw)}°  ↑${deg(this.scene.orbitPitch)}°`;
     if (el.textContent !== text) el.textContent = text;
     el.classList.add('turned');
-  }
-
-  /** Transient banner explaining the roll gesture while Shift is held. */
-  showTurnHint(on) {
-    const el = this.dom.hint;
-    if (!el) return;
-    if (on) {
-      el.textContent = 'Lăn chuột dọc để xoay ngang (trục Z)';
-      el.style.display = 'flex';
-    } else {
-      this.setZoneHint(null);
-    }
   }
 
 
@@ -178,10 +167,10 @@ export class BuildModeUI {
     this.dom.modal.classList.add('active');
     this.isOpen = true;
     sounds.playClick();
-    // Each build session starts from the authored angle, so a case left on its
-    // side by the last run cannot greet the player that way.
-    this.scene?.resetCaseTurn();
-    this.setTurnBadge();
+    // Each build session starts from the authored front view, so an orbit left
+    // off-axis from the last run cannot greet the player that way.
+    this.scene?.resetView();
+    this.setViewBadge();
     this.renderStep();
     this.renderChecklist();
     this.renderSlots();
@@ -221,7 +210,7 @@ export class BuildModeUI {
     this.clearPostTimers();
     this.dom.modal.classList.remove('active');
     this.isOpen = false;
-    this.endTurn();
+    this.endOrbit();
     this.scene?.clearPointer();
     this.scene?.clearGhost();
     this.setZoneHint(null);
@@ -374,18 +363,16 @@ export class BuildModeUI {
   onPointerMove(e) {
     if (!this.scene) return;
 
-    // Turning the case: the delta is taken against the previous position and the
+    // Orbiting the view: the delta is taken against the previous position and the
     // ghost is deliberately not refreshed, otherwise it would chase the cursor
-    // across the interior while the player is trying to turn the chassis.
-    if (this.turning) {
-      const dx = e.clientX - this.turning.x;
-      const dy = e.clientY - this.turning.y;
-      this.turning.x = e.clientX;
-      this.turning.y = e.clientY;
-      const step = 0.0085;
-      if (this.turning.roll) this.scene.rotateCase(0, 0, dy * step);
-      else this.scene.rotateCase(-dx * step, -dy * step, 0);
-      this.setTurnBadge();
+    // across the interior mid-drag.
+    if (this.orbiting) {
+      const dx = e.clientX - this._orbitLast.x;
+      const dy = e.clientY - this._orbitLast.y;
+      this._orbitLast.x = e.clientX;
+      this._orbitLast.y = e.clientY;
+      this.scene.orbitBy(dx, dy);
+      this.setViewBadge();
       return;
     }
 
@@ -396,38 +383,36 @@ export class BuildModeUI {
 
   onPointerLeave() {
     if (!this.scene) return;
-    if (this.turning) return;
+    if (this.orbiting) return;
     this.scene.clearPointer();
     this.scene.updateGhost(this.activeStep()?.zone, this.ghostArmed);
     this.setZoneHint(null);
   }
 
   onPointerUp(e) {
-    if (e.button === 2) this.endTurn();
+    if (e.button === 2) this.endOrbit();
   }
 
-  /** Squares the chassis back to its authored angle. */
-  resetCaseTurn() {
+  /** Returns the eye to the authored front view. */
+  resetView() {
     if (!this.scene) return;
-    this.endTurn();
-    this.scene.resetCaseTurn();
-    this.setTurnBadge();
-    this.setToast('Đã xoay thùng máy về góc mặc định.');
+    this.endOrbit();
+    this.scene.resetView();
+    this.setViewBadge();
+    this.setToast('Đã đưa góc nhìn thùng máy về góc mặc định.');
     this.refreshGhost();
   }
 
-  endTurn() {
-    if (!this.turning) return;
-    const wasRoll = this.turning.roll;
-    // Pointer moves are swallowed during a turn, so the scene's cursor position is
-    // whatever it was when the button went down. Re-seat it on the last known spot
-    // or the ghost reappears somewhere the player has long since left.
-    this.scene.setPointer(this.turning.x, this.turning.y);
-    this.turning = null;
-    this.scene.caseTurnActive = false;
-    document.body.classList.remove('build-turning');
-    if (wasRoll) this.showTurnHint(false);
-    // The cursor may now be over something new, so re-seat the ghost on the part
+  endOrbit() {
+    if (!this.orbiting) return;
+    // Pointer moves are swallowed during the orbit, so the scene's cursor
+    // position is whatever it was when the button went down. Re-seat it on the
+    // last known spot or the ghost reappears where the player left it.
+    this.scene.setPointer(this._orbitLast.x, this._orbitLast.y);
+    this.orbiting = false;
+    this.scene.endOrbit();
+    document.body.classList.remove('build-orbiting');
+    // The view may now frame something new, so re-seat the ghost on the part
     this.refreshGhost();
   }
 
@@ -441,14 +426,13 @@ export class BuildModeUI {
   async onPointerDown(e) {
     if (!this.scene) return;
 
-    // Right mouse button turns the case. Every installed part is parented to the
-    // same group as the chassis, so the whole machine comes round together and
-    // nothing has to be re-seated.
+    // Right mouse button orbits the eye around the chassis. The case and its
+    // cargo stay put; only the camera moves.
     if (e.button === 2) {
-      this.turning = { x: e.clientX, y: e.clientY, roll: !!e.shiftKey };
-      this.scene.caseTurnActive = true;
-      document.body.classList.add('build-turning');
-      if (e.shiftKey) this.showTurnHint(true);
+      this.orbiting = true;
+      this._orbitLast = { x: e.clientX, y: e.clientY };
+      this.scene.beginOrbit(e.clientX, e.clientY);
+      document.body.classList.add('build-orbiting');
       return;
     }
     if (e.button !== 0) return;

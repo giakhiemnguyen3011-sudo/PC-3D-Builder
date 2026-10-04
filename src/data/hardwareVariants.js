@@ -1,4 +1,4 @@
-import { HARDWARE_CATEGORIES } from './hardwareCategories.js';
+﻿import { HARDWARE_CATEGORIES } from './hardwareCategories.js';
 
 /**
  * Extra hardware variants, one for every model in public/models that the base
@@ -104,74 +104,6 @@ export const HARDWARE_VARIANTS = [
     ],
     description: 'Bo mạch AM4 phổ thông cho dòng Ryzen, nền tảng dễ nâng cấp lên thế hệ Zen 3.',
     beginnerTip: '💡 Board AM4 chỉ nhận CPU kiểu AM4. Kiểm tra khe RAM DDR4 (không phải DDR5) trước khi mua CPU.'
-  },
-  {
-    id: 'mb_asus_prime_b450',
-    name: 'ASUS PRIME B450M-A',
-    category: HARDWARE_CATEGORIES.MOTHERBOARD,
-    categoryKey: 'motherboard',
-    tag: 'Motherboard',
-    modelPath: '/models/Motherboard_model/motherboard.glb',
-    brand: 'ASUS',
-    price: '1,890,000 đ',
-    realSize: 0.244,
-    footprint: { length: 0.244, depth: 0.244 },
-    iconSvg: ICON('motherboard'),
-    specs: [
-      { label: 'Socket', value: 'AM4' },
-      { label: 'Chipset', value: 'AMD B450' },
-      { label: 'Kích thước Form Factor', value: 'Micro-ATX (24.4 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '4x DDR4 DIMM (Tối đa 64GB)' },
-      { label: 'Khe PCIe', value: '1x PCIe 3.0 x16, 1x PCIe 3.0 x1' },
-      { label: 'Cổng M.2 & SATA', value: '1x M.2, 4x SATA III' }
-    ],
-    description: 'Bo mATX gọn nhẹ, vừa khít với các thùng case mini mà vẫn đủ 4 khe RAM.',
-    beginnerTip: '💡 Bo Micro-ATX nhỏ hơn ATX nhưng vẫn dùng chung hệ chân ốc 9 lỗ như mọi bo ATX thông thường.'
-  },
-  {
-    id: 'mb_asrock_z690',
-    name: 'ASRock Z690M Pro RS',
-    category: HARDWARE_CATEGORIES.MOTHERBOARD,
-    categoryKey: 'motherboard',
-    tag: 'Motherboard',
-    modelPath: '/models/Motherboard_model/simple_motherboard.glb',
-    brand: 'ASRock',
-    price: '4,150,000 đ',
-    realSize: 0.305,
-    footprint: { length: 0.305, depth: 0.252 },
-    iconSvg: ICON('motherboard'),
-    specs: [
-      { label: 'Socket', value: 'LGA 1700 (Intel 12th Gen)' },
-      { label: 'Chipset', value: 'Intel Z690' },
-      { label: 'Kích thước Form Factor', value: 'Micro-ATX (30.5 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '4x DDR5 DIMM (Tối đa 128GB)' },
-      { label: 'Khe PCIe', value: '1x PCIe 5.0 x16, 1x PCIe 4.0 x16' },
-      { label: 'Cổng M.2 & SATA', value: '2x M.2 NVMe, 4x SATA III' }
-    ],
-    description: 'Bo thế hệ mới nhất hỗ trợ PCIe 5.0, sẵn sàng cho card đồ họa và SSD tốc độ cao.',
-    beginnerTip: '💡 Board Z690 đi kèm CPU thế hệ 12, khe RAM là DDR5 - khác hẳn DDR4 về vị trí khe cắm.'
-  },
-  {
-    id: 'mb_generic_atx',
-    name: 'ATX Motherboard (Generic Components)',
-    category: HARDWARE_CATEGORIES.MOTHERBOARD,
-    categoryKey: 'motherboard',
-    tag: 'Motherboard',
-    modelPath: '/models/Motherboard_model/motherboard-components.glb',
-    brand: 'Generic',
-    price: '890,000 đ',
-    realSize: 0.305,
-    footprint: { length: 0.305, depth: 0.252 },
-    iconSvg: ICON('motherboard'),
-    specs: [
-      { label: 'Socket', value: 'AM4 / LGA 1151 (tùy phiên bản)' },
-      { label: 'Chipset', value: 'Generic' },
-      { label: 'Kích thước Form Factor', value: 'ATX (30.5 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '4x DDR4 DIMM' },
-      { label: 'Khe PCIe', value: '1x PCIe 3.0 x16' }
-    ],
-    description: 'Bo mạch chủ ATX tiêu chuẩn dùng để dạy hình dạng linh kiện và các cổng kết nối.',
-    beginnerTip: '💡 Đây là board trình diễn: tập trung vào cách nhận biết khe RAM, khe PCIe và cụm cổng I/O ở mép trên.'
   },
   {
     id: 'mb_gigabyte_h61',

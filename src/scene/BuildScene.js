@@ -20,17 +20,12 @@ const ZOOM_MAX = 3.2;
  * Interactive "Build Zone": a 50% x-ray case with snap zones, a ghost part that
  * tracks the cursor, fastener targets and per-step camera framing.
  *
- * The case can be turned by hand on all three axes. Everything the builder cares
- * about lives under `caseRoot` - the chassis, the zone markers, the carried
- * ghost, the fasteners and every part already installed - so turning that one
- * group carries the whole machine with it and the parts stay registered in their
- * sockets. The spin group sits above `caseRoot` precisely because of that: there
- * is nothing else to keep in sync.
- *
- * Turning happens around the chassis' own centre. That matters: `caseRoot` is
- * offset so the feet rest on y = 0, so rotating it directly would swing the case
- * around its base like a pendulum and throw it out of frame.
- */
+  * The eye can be orbit around the chassis on two axes, and the chassis is
+  * never turned itself. Everything the builder cares about lives under
+  * `caseRoot` - the zone markers, the carried ghost, the fasteners and every
+  * part already installed - so there is no risk of a placed part losing track
+  * of its seat when the view changes.
+  */
 export class BuildScene {
   constructor(canvas) {
     this.canvas = canvas;
@@ -73,24 +68,14 @@ export class BuildScene {
     this.pivot = new THREE.Group();
     this.scene.add(this.pivot);
 
-    // ------------------------------------------------------------ turntable
-    // `spin` carries the player's chosen orientation and sits between the pivot
-    // and the case. Its matrix is composed by hand as T(c)·R·T(-c) so the turn
-    // happens about the chassis centre while leaving the case exactly where it
-    // was at zero rotation - a plain group rotation here would pivot around
-    // origin and swing the case out of shot.
-    this.caseTurn = { x: 0, y: 0, z: 0 };
-    this.spin = new THREE.Group();
-    this.spin.matrixAutoUpdate = false;
-    this.pivot.add(this.spin);
-    this._spinM = new THREE.Matrix4();
-    this._spinT = new THREE.Matrix4();
-    this._spinR = new THREE.Matrix4();
-    this._spinQ = new THREE.Quaternion();
-    this._spinEuler = new THREE.Euler(0, 0, 0, 'YXZ');
-    this._spinCentre = new THREE.Vector3();
-    this._mInverse = new THREE.Matrix4();
-    this.caseTurnActive = false;
+    // Orbit view: the camera circles the chassis instead of the chassis turning.
+    // yaw/pitch are measured from the authored glass-side-on view so that
+    // (0, 0) reproduces exactly the framing this builder has always had.
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
+    this.orbiting = false;   // right-button held: the ghost stays hidden
+    this._orbitLast = { x: 0, y: 0 };
+    this._orbitDist = 1;
 
 
     // caseRoot owns the ONE transform that turns the chassis so its glass side
@@ -100,15 +85,10 @@ export class BuildScene {
     this.caseRoot = new THREE.Group();
     this.caseRoot.rotation.y = -Math.PI / 2;
     this.caseRoot.position.set(0, -CASE.feet, 0);
-    this.spin.add(this.caseRoot);
-    // The pivot is measured from the real chassis in `buildCase`, once the
-    // geometry exists. `CASE_BOUNDS` cannot be used for this: it is published in
-    // layout axes (210 wide by 450 deep) while the chassis is built on the other
-    // axis pair (450 by 220) and only turned afterwards by caseRoot, so taking
-    // its centre lands about 15 mm out and makes the case swing as it turns.
-    this._spinCentre.set(0, 0, 0);
+    this.pivot.add(this.caseRoot);
 
     this.cameraGoal = new THREE.Vector3();
+
     this.lookGoal = new THREE.Vector3();
     this.cameraMoving = false;
 
@@ -166,39 +146,9 @@ export class BuildScene {
     });
 
     this.buildZoneMarkers();
-    this.measureTurnCentre();
     this.setGlass(true, true);
     this.focusCase();
     this.snapCamera();
-  }
-
-  /**
-   * Finds the chassis' own middle so the turntable can spin it in place.
-   *
-   * Measured from the built geometry rather than from `CASE_BOUNDS`, because the
-   * bounds are the layout's nominal envelope and the chassis is not centred
-   * inside it. The sliding glass panel is left out: it travels 260 mm when the
-   * side panel is removed, and letting it define the pivot would make the case
-   * jump the moment the panel was taken off.
-   */
-  measureTurnCentre() {
-    const box = new THREE.Box3();
-    const part = new THREE.Box3();
-    this.pivot.updateMatrixWorld(true);
-    this.caseGroup.updateMatrixWorld(true);
-    this.caseGroup.traverse(o => {
-      if (!o.isMesh || o === this.sideGlass) return;
-      part.setFromObject(o);
-      if (!part.isEmpty()) box.union(part);
-    });
-    if (box.isEmpty()) return;
-    // The pivot has to be expressed in the space `spin.matrix` composes in, which
-    // is the pivot's - `spin.matrix` is applied to caseRoot's output, not to
-    // caseRoot's own coordinates. Carrying the world centre into pivot space
-    // keeps a single fixed chassis point pinned while it turns.
-    this._spinCentre.copy(box.getCenter(new THREE.Vector3()))
-      .applyMatrix4(this._mInverse.copy(this.pivot.matrixWorld).invert());
-    this.applyCaseTurn();
   }
 
   buildZoneMarkers() {
@@ -241,66 +191,50 @@ export class BuildScene {
     this.sideGlass.position.x = GLASS_X + (1 - this.glassT) * GLASS_SLIDE;
   }
 
-  // --------------------------------------------------------- case turntable
-  /**
-   * Writes the current case orientation onto the turntable group.
-   *
-   * Composed as T(centre)·R·T(-centre) so the chassis spins in place about its
-   * own middle. At zero rotation the whole product collapses to identity, so the
-   * case sits precisely where it always did and no camera framing or placement
-   * maths has to account for the extra group.
-   */
-  applyCaseTurn() {
-    const { x, y, z } = this.caseTurn;
-    this._spinEuler.set(x, y, z, 'YXZ');
-    this._spinQ.setFromEuler(this._spinEuler);
-    const c = this._spinCentre;
-    this._spinM.makeTranslation(c.x, c.y, c.z);
-    this._spinT.makeTranslation(-c.x, -c.y, -c.z);
-    this._spinR.makeRotationFromQuaternion(this._spinQ);
-    this._spinM.multiply(this._spinR).multiply(this._spinT);
-    this.spin.matrix.copy(this._spinM);
-    this.spin.matrixWorldNeedsUpdate = true;
-    // Children - the chassis, every installed part, the ghost and the fasteners -
-    // are carried by the world-matrix refresh that the frame loop already does.
-    this.pivot.updateMatrixWorld(true);
+  // ----------------------------------------------------------- view orbiting
+  /** The camera circles the chassis rather than the chassis turning. */
+  beginOrbit(x, y) {
+    this.orbiting = true;
+    this._orbitLast.x = x;
+    this._orbitLast.y = y;
+    this._orbitDist = this.camera.position.distanceTo(this.lookGoal);
+    // cancel any zone glide so it does not fight the drag
+    this.cameraMoving = false;
   }
 
-  get caseRotation() {
-    return { ...this.caseTurn };
-  }
-
-  /** True once the case has been turned away from its authored orientation. */
-  get isCaseTurned() {
-    const { x, y, z } = this.caseTurn;
-    return Math.abs(x) > 1e-4 || Math.abs(y) > 1e-4 || Math.abs(z) > 1e-4;
-  }
-
-  /**
-   * Nudges the case orientation. `dy` is yaw, `dx` pitch and `dz` roll, in
-   * radians. Pitch and roll are clamped short of a full flip, which would leave
-   * the interior unreadable and put the ghost behind the camera.
-   */
-  rotateCase(dy, dx, dz) {
-    const TURN_LIMIT = Math.PI * 0.75;
-    const clampTurn = v => THREE.MathUtils.clamp(v, -TURN_LIMIT, TURN_LIMIT);
-    this.setCaseRotation(
-      this.caseTurn.y + dy,
-      clampTurn(this.caseTurn.x + dx),
-      clampTurn(this.caseTurn.z + dz)
+  orbitBy(dx, dy) {
+    if (!this.orbiting) return;
+    const step = 0.0075;
+    this.orbitYaw -= dx * step;
+    this.orbitPitch = THREE.MathUtils.clamp(this.orbitPitch - dy * step, -1.2, 1.2);
+    const dist = this._orbitDist;
+    const cp = Math.cos(this.orbitPitch);
+    this.camera.position.set(
+      this.lookGoal.x + dist * Math.sin(this.orbitYaw) * cp,
+      this.lookGoal.y + dist * Math.sin(this.orbitPitch),
+      this.lookGoal.z + dist * Math.cos(this.orbitYaw) * cp
     );
+    this.camera.lookAt(this.lookGoal);
   }
 
-  setCaseRotation(yaw, pitch, roll) {
-    this.caseTurn.y = yaw;
-    this.caseTurn.x = pitch;
-    this.caseTurn.z = roll;
-    this.applyCaseTurn();
+  endOrbit() {
+    this.orbiting = false;
+  }
+
+  get isOrbiting() {
+    return this.orbiting;
+  }
+
+  /** True once the eye has been dragged off the authored front view. */
+  get isOrbitingOff() {
+    return Math.abs(this.orbitYaw) > 0.03 || Math.abs(this.orbitPitch) > 0.03;
   }
 
   /** Back to the authored glass-side-on view. */
-  resetCaseTurn() {
-    this.setCaseRotation(0, 0, 0);
+  resetView() {
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
+    this._refocus();
   }
 
   // --------------------------------------------------------- camera moves
@@ -361,7 +295,14 @@ export class BuildScene {
       (Math.max(size.y / 2 / tanV, size.x / 2 / tanH) * margin + size.z / 2) / this.zoom;
 
     this.lookGoal.copy(centre);
-    this.cameraGoal.set(centre.x, centre.y, centre.z + dist);
+    // Frame from the current view angle: turning the eye to the side of the
+    // chassis must survive a zoom or a step change, not snap back to the front.
+    const cp = Math.cos(this.orbitPitch);
+    this.cameraGoal.set(
+      centre.x + dist * Math.sin(this.orbitYaw) * cp,
+      centre.y + dist * Math.sin(this.orbitPitch),
+      centre.z + dist * Math.cos(this.orbitYaw) * cp
+    );
     this.cameraMoving = true;
   }
 
@@ -578,10 +519,10 @@ export class BuildScene {
    */
   updateGhost(zoneId, armed = true) {
     if (!this.ghost) return;
-    // While the chassis is being turned the carried part is put away: it would
+    // While the view is being orbited the carried part is put away: it would
     // otherwise slide across the interior chasing the cursor mid-drag. Enforced
     // here as well as in the UI so the scene stays consistent on its own.
-    if (!armed || !zoneId || !this.pointerInside || this.caseTurnActive) {
+    if (!armed || !zoneId || !this.pointerInside || this.orbiting) {
       this.ghost.group.visible = false;
       this.ghost.zoneId = null;
       return;
@@ -1086,19 +1027,16 @@ export class BuildScene {
     this.setGlass(true, true);
     this.setPower(true);
 
-    // The turntable is a build-time aid for reaching awkward angles, not a pose
-    // the machine should carry into the room, so it is put back square first.
-    // `adoptAssembledPC` also seats the machine on the bench facing the room.
-    this.resetCaseTurn();
-
     this.caseRoot.updateMatrixWorld(true);
 
-    // `assembled` is re-parented to the room scene, which shares BuildScene's
-    // root space, so the case's world transform is what has to be copied - not
-    // caseRoot's local one, which only means anything relative to its parent.
+    // The finished machine keeps caseRoot's turn, so it walks into the room at
+    // the same orientation the builder saw through the glass.
     const assembled = new THREE.Group();
     assembled.name = 'assembledPC';
-    this.caseRoot.matrixWorld.decompose(assembled.position, assembled.quaternion, assembled.scale);
+    assembled.position.copy(this.caseRoot.position);
+    assembled.quaternion.copy(this.caseRoot.quaternion);
+    assembled.scale.copy(this.caseRoot.scale);
+
 
 
     const caseClone = this.caseGroup.clone(true);
@@ -1144,8 +1082,7 @@ export class BuildScene {
     this.clearParts();
     this.hideScrews();
     this.hideCableTargets();
-    if (this.caseRoot) this.spin.remove(this.caseRoot);
-    if (this.spin) this.pivot.remove(this.spin);
+    if (this.caseRoot) this.pivot.remove(this.caseRoot);
 
     this.renderer.dispose();
 

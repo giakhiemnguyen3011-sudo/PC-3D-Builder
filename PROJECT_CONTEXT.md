@@ -1,4 +1,4 @@
-﻿# PROJECT CONTEXT: PC BUILDER 3D (TRÌNH MÔ PHỎNG LẮP RÁP MÁY TÍNH 3D)
+# PROJECT CONTEXT: PC BUILDER 3D (TRÌNH MÔ PHỎNG LẮP RÁP MÁY TÍNH 3D)
 
 > **File này lưu trữ toàn bộ bối cảnh, kiến trúc, thư mục, mô hình dữ liệu và cơ chế hoạt động của dự án PC Builder 3D. Được tối ưu hóa cho AI LLM (Gemini, Claude, GPT) để nắm bắt và tiếp tục phát triển.**
 
@@ -319,3 +319,13 @@ Nghĩa là **chỉ 8,6% thời gian khung nằm ở script**, phần còn lại 
 `verify-performance.mjs` (20 test) chặn cả hai lỗi này, chặn luôn bẫy ở 10.3, và xác nhận các thiết lập chất lượng hình ảnh ở 10.1 không bị đụng vào.
 
 Lưu ý khi đo: `Raycaster` biến động thời gian rất lớn giữa các lần chạy (đo sạch thấy 0,03–0,20 ms), nên đừng kết luận từ một lần chạy đơn lẻ.
+
+## 11. CHIẾN MỤC LINH KIỆN, XOAY GÓC NHÌN BUILD MODE & VỎ MÁY TRẮNG
+
+Ba thay đổi mới:
+
+1. **Chỉ còn hai bo mạch chủ trong mô phỏng** (`src/data/hardware.js` + `src/data/hardwareVariants.js`): `mb_msi_b550_tomahawk` (file `motherboard_am4.glb`) và `mb_gigabyte_h61` (file `motherbard.glb`). Bỏ `mb_asus_z370`, `mb_asus_prime_b450`, `mb_asrock_z690`, `mb_generic_atx` và ma trận `mb_asus_prime_b450` trong `hardwareDims.js`. Tổng số linh kiện giảm 31 → 27. Mọi bước lắp ráp nhận linh kiện theo `tag:Motherboard` nên hai board còn lại vẫn dùng được; bài test `verify-integration` phải trỏ theo `id` thay vì chỉ số điểm mốc trong mảng khi mất bớt phần tử khỏi `ALL_HARDWARE_ITEMS`.
+
+2. **Thay vòng xoay thùng máy bằng xoay góc nhìn camera** (tham khảo `BuildScene.orbitYaw/orbitPitch`, `beginOrbit/orbitBy/endOrbit`, `resetView` + `setViewBadge` trong BuildModeUI). Chuột phải kéo để xoay quanh thùng, lăn chuột để phóng to (bước phóng to giữ nguyên hướng nhìn hiện tại nhờ `frameBox`), phím Home đưa về góc nhìn mặc định. Ý định ban đầu là xoay *thùng máy*, nhưng người dùng thấy quan sát góc nhìn tự nhiên hơn; mã `spin`/`caseTurn` và `measureTurnCentre` đã gỡ. Lưu ý: `CASE_BOUNDS` là hộp bao kích thước *theo bố cục*, còn`caseGroup` dựng theo trục khác (450×220 so với 210×450), vì vậy không được dùng `CASE_BOUNDS` làm tâm xoay hay đo đạc hình học thật. Hai lỗi bố trí bo mạch/CPU trong ảnh chụp (`Afterfix bug1/2.PNG`) vẫn **chưa sửa** theo yêu cầu.
+
+3. **Vỏ thùng màu trắng cho độ tương phản** (cả trường hợp hộp placeholder trong phòng và trong Build Mode 50% x-ray): `steel/steelTwoSided/steelInner/trim/dark/rubber/blade/grille` được đổi từ tông đen sáng lên tông trắng/đồng xám (`0xf5f5f4`/`0xe7e5e4`/`0xd6d3d1`/`0xcbd5e1`). Các chi tiết cổng kết nối phía sau (`0x1d4ed8`, `0x334155`) cố tình giữ màu tối để nhận biết. Bóng đổ vẫn giữ: `PCFSoft` + 2048 + autoUpdate mỗi 4 khung.

@@ -775,13 +775,14 @@ export function createComputerCase3DGroup(options = {}) {
     return mat;
   };
 
-  const steel = shell({ color: 0x171b22, roughness: 0.42, metalness: 0.88 });
-  const steelTwoSided = shell({ color: 0x171b22, roughness: 0.42, metalness: 0.88 });
+  const steel = shell({ color: 0xf5f5f4, roughness: 0.42, metalness: 0.25 });
+  const steelTwoSided = shell({ color: 0xf5f5f4, roughness: 0.42, metalness: 0.25 });
   steelTwoSided.side = THREE.DoubleSide;
-  const steelInner = shell({ color: 0x1e232c, roughness: 0.55, metalness: 0.72 });
-  const trim = shell({ color: 0x2b323d, roughness: 0.3, metalness: 0.9 });
-  const dark = shell({ color: 0x0a0c10, roughness: 0.95, metalness: 0.1 });
-  const rubber = shell({ color: 0x0c0e12, roughness: 1, metalness: 0 });
+  const steelInner = shell({ color: 0xe7e5e4, roughness: 0.55, metalness: 0.2 });
+  const trim = shell({ color: 0xd6d3d1, roughness: 0.3, metalness: 0.5 });
+  const dark = shell({ color: 0xf5f5f4, roughness: 0.95, metalness: 0.05 });
+  const rubber = shell({ color: 0xe7e5e4, roughness: 1, metalness: 0 });
+
   const accent = shell({
     color: 0x38bdf8, emissive: 0x0d5f80, emissiveIntensity: 1.5, roughness: 0.4
   });
@@ -817,12 +818,13 @@ export function createComputerCase3DGroup(options = {}) {
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repeatX, repeatY);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x1c222b,
+      color: 0xe7e5e4,
       alphaMap: tex,
       alphaTest: 0.5,
       side: THREE.DoubleSide,
       roughness: 0.6,
       metalness: 0.55
+
     });
     if (xray) {
       mat.transparent = true;
@@ -880,20 +882,23 @@ export function createComputerCase3DGroup(options = {}) {
 
     const back = new THREE.Mesh(
       new THREE.CircleGeometry(radius - 0.008, 28),
-      shell({ color: 0x0d1015, roughness: 0.8, side: THREE.DoubleSide })
+      shell({ color: 0xd6d3d1, roughness: 0.8, side: THREE.DoubleSide })
+
     );
     back.position.z = -thickness / 2;
     fan.add(back);
 
     const hub = new THREE.Mesh(
       new THREE.CylinderGeometry(0.017, 0.017, thickness * 0.7, 14),
-      shell({ color: 0x0a0c10, roughness: 0.95, metalness: 0.1 })
+      shell({ color: 0xe7e5e4, roughness: 0.95, metalness: 0.05 })
+
     );
     hub.rotation.x = Math.PI / 2;
     fan.add(hub);
 
     const bladeMat = shell({
-      color: 0x1b2028, roughness: 0.5, metalness: 0.6, side: THREE.DoubleSide
+      color: 0xcbd5e1, roughness: 0.5, metalness: 0.15, side: THREE.DoubleSide
+
     });
     for (let i = 0; i < blades; i++) {
       const angle = (i / blades) * Math.PI * 2;
@@ -1055,7 +1060,8 @@ export function createComputerCase3DGroup(options = {}) {
 
   add(
     new THREE.CylinderGeometry(rearFanR - 0.001, rearFanR - 0.007, 0.026, 26, 1, true),
-    shell({ color: 0x0d1015, roughness: 0.8, metalness: 0.4, side: THREE.DoubleSide }),
+    shell({ color: 0xe7e5e4, roughness: 0.8, metalness: 0.2, side: THREE.DoubleSide }),
+
     [rearFanX, rearFanY, zRear + T + 0.013],
     { rotation: [Math.PI / 2, 0, 0], cast: false }
   );
