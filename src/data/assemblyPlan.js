@@ -1,5 +1,5 @@
 /**
- * The 12 steps of building a PC, in the order a technician would actually do them.
+ * The 10 steps of building a PC, in the order a technician would actually do them.
  *
  * Each step declares:
  *   zone     - the Build Zone snap target in caseLayout.js
@@ -144,32 +144,6 @@ export const ASSEMBLY_STEPS = [
       'Đặt nắp kính cường lực lại đúng vị trí rồi siết 4 núm vặn ở góc để chốt chặt.',
     tip: 'Kiểm tra không còn khe hở giữa kính và khung thùng trước khi bật nguồn.',
     shortHint: 'Đặt lại kính → siết 4 núm'
-  },
-  {
-    step: 11,
-    zone: 'display',
-    action: 'display',
-    accepts: [],
-    need: 0,
-    shortName: 'Cắm cáp màn hình và dây nguồn AC',
-    title: 'Bước 11 · Kết nối màn hình',
-    instruction:
-      'Cắm cáp DisplayPort từ card đồ họa ra cổng màn hình và cắm dây nguồn AC vào bộ nguồn. Bật công tắc nguồn trên thùng.',
-    tip: 'Đầu cắm DisplayPort có móc chốt, phải ấn mạnh một chút mới vào được đến khít.',
-    shortHint: 'DisplayPort → dây AC → bật công tắc'
-  },
-  {
-    step: 12,
-    zone: 'power',
-    action: 'power',
-    accepts: [],
-    need: 0,
-    shortName: 'Bật nguồn khởi động máy',
-    title: 'Bước 12 · Bật nguồn',
-    instruction:
-      'Nhấn nút nguồn trên nắp trên của thùng. Quạt quay, đèn RGB sáng lên, tiếng bíp POST vang lên và màn hình khởi động.',
-    tip: 'Mất khoảng 5-10 giây cho POST. Nếu không lên, hãy quay lại kiểm tra cáp 24-pin và CPU đã ngồi đúng chưa.',
-    shortHint: 'Nhấn nút nguồn và chờ POST'
   }
 ];
 
