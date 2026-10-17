@@ -7,6 +7,7 @@ import { HeldItemManager } from '../controls/HeldItemManager.js';
 import { PlayerControls } from '../controls/PlayerControls.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { BuildModeUI } from '../ui/BuildModeUI.js';
+import { PartsChecklist } from '../ui/PartsChecklist.js';
 import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
 import { sounds } from '../audio/SoundEffects.js';
 
@@ -75,6 +76,10 @@ export class Game {
         this.controls.lockPointer();
       }
     );
+
+    // The clipboard on the bench: what to fetch before walking into Build Mode.
+    // It reads the live backpack, so picking a part up ticks a line off.
+    this.partsChecklist = new PartsChecklist({ inventoryUI: this.inventoryUI });
 
     // Player Controls (WASD / Arrows + Shift-Lock + Raycasting)
     this.controls = new PlayerControls(
@@ -448,7 +453,14 @@ export class Game {
     // CASE B: PLAYER'S HAND IS EMPTY (OR SWAPPING)
     // ==========================================
 
-    // 0. The wiring: the case's video port and the monitor's HDMI port
+    // 0. The clipboard on the bench: the pre-flight parts list. It is a HUD popup,
+    // so the game keeps running behind it and the pointer is left alone.
+    if (uData.type === 'clipboard') {
+      this.partsChecklist.toggle();
+      return;
+    }
+
+    // 1. The wiring: the case's video port and the monitor's HDMI port
     if (uData.type === 'pcVideoPort') {
       this.handleCableClick('pc');
       return;
@@ -458,7 +470,7 @@ export class Game {
       return;
     }
 
-    // 1. The finished machine: pick it up, swap it out
+    // 2. The finished machine: pick it up, swap it out
     if (uData.type === 'assembledPC') {
       const prev = this.assembledPC;
       if (!prev) return;
@@ -478,14 +490,14 @@ export class Game {
       return;
     }
 
-    // 1. Clicked the empty case placeholder -> Build Mode
+    // 3. Clicked the empty case placeholder -> Build Mode
     if (uData.type === 'computerCase') {
       this.buildModeUI.open();
       this.controls.unlockPointer();
       return;
     }
 
-    // 2. Clicked an item placed on a bench / shelf
+    // 4. Clicked an item placed on a bench / shelf
     if (uData.isPlaced && uData.itemId) {
       const item = ALL_HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
@@ -496,7 +508,7 @@ export class Game {
       return;
     }
 
-    // 3. Clicked an item still sitting on the parts table
+    // 5. Clicked an item still sitting on the parts table
     if (uData.itemId) {
       const item = ALL_HARDWARE_ITEMS.find(it => it.id === uData.itemId);
       if (item) {
@@ -543,6 +555,13 @@ export class Game {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ESC closes whichever overlay is open, the clipboard first: it is the one
+    // the player opens before walking into Build Mode.
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Escape') return;
+      if (this.partsChecklist?.isOpen) this.partsChecklist.close();
     });
   }
 
@@ -627,6 +646,9 @@ export class Game {
   markWorldChanged() {
     this.controls?.markRaycastDirty();
     this.shadowDirty = true;
+    // the clipboard reads the backpack, so anything that moves a part into or out
+    // of it has to repaint the list if it happens to be on screen
+    if (this.partsChecklist?.isOpen) this.partsChecklist.refresh();
   }
 
   showToast(message) {

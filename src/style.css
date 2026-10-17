@@ -1420,11 +1420,192 @@ body.build-orbiting #build-case-canvas {
 
 
 /* ================================================================
-   Parts to-do list
-   The markup landed in index.html ahead of its stylesheet and its
-   opener. Until those arrive the panel has to stay out of the way,
-   otherwise it renders as a bare div in the middle of the game.
+   Parts to-do list (the clipboard on the bench)
+Pre-flight sheet: everything the assembly plan will ask for, ticked
+   off against what is in the backpack. Opened from the clipboard, and
+   drawn as a screen HUD popup in the same language as the hotkeys bar
+   rather than a modal dialog, so the bench stays visible behind it.
    ================================================================ */
 #todo-list-modal {
+  position: fixed;
+  left: 24px;
+  bottom: 84px;
+  z-index: 30;
   display: none;
+  pointer-events: none;
+}
+
+#todo-list-modal.active {
+  display: block;
+  pointer-events: auto;
+  animation: todo-list-in 0.18s ease-out;
+}
+
+@keyframes todo-list-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.todo-list-container {
+  width: min(380px, calc(100vw - 48px));
+  max-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.todo-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 197, 255, 0.12);
+}
+
+.todo-list-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.todo-list-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e2e8f0;
+}
+
+.todo-list-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.todo-list-badge.ready {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.todo-list-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  background: rgba(148, 197, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.todo-list-close:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fecaca;
+}
+
+.todo-list-progress {
+  height: 5px;
+  margin: 12px 14px 0;
+  border-radius: 999px;
+  background: rgba(148, 197, 255, 0.12);
+  overflow: hidden;
+}
+
+.todo-list-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #22d3ee);
+  transition: width 0.25s ease;
+}
+
+.todo-list-summary {
+  margin: 8px 14px 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #94a3b8;
+}
+
+.todo-list-summary.warn {
+  color: #fbbf24;
+}
+
+.todo-list-rows {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 12px;
+  overflow-y: auto;
+}
+
+.todo-list-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 8px;
+}
+
+.todo-list-row + .todo-list-row {
+  border-top: 1px solid rgba(148, 197, 255, 0.08);
+}
+
+.todo-list-row.ready .todo-list-name {
+  color: #86efac;
+}
+
+.todo-list-tick {
+  font-size: 15px;
+  text-align: center;
+  color: #64748b;
+}
+
+.todo-list-row.ready .todo-list-tick {
+  color: #4ade80;
+}
+
+.todo-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todo-list-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.todo-list-step {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.todo-list-alt {
+  font-size: 11px;
+  color: #475569;
+}
+
+.todo-list-have {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.todo-list-row.ready .todo-list-have {
+  color: #4ade80;
 }

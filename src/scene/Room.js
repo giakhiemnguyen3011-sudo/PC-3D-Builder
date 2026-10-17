@@ -27,6 +27,7 @@ export class Room {
     this.createComputerCasePlaceholder();
     this.createMonitor();
     this.createPeripherals();
+    this.createClipboard();
     this.createDecorations();
 
     this.scene.add(this.group);
@@ -1013,6 +1014,58 @@ export class Room {
     }
   }
 
+
+  /**
+   * The clipboard lying on the desk: the pre-flight parts list.
+   *
+   * It is a real prop (a board with a clip and a few sheets) rather than a
+   * button, so the player finds it by looking at the bench. Clicking it opens
+   * the list of everything the build is going to ask for.
+   */
+  createClipboard() {
+    const board = new THREE.Group();
+    board.position.set(0.02, 0.826, 0.3);
+    board.rotation.set(0, -0.42, 0);
+    this.group.add(board);
+
+    const boardMat = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.78, metalness: 0.02 });
+    const paperMat = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 0.92 });
+    const clipMat = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.35, metalness: 0.8 });
+    const lineMat = new THREE.MeshStandardMaterial({ color: 0x9fb3c8, roughness: 0.9 });
+
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.006, 0.32), boardMat);
+    board.add(panel);
+
+    // three sheets, the top one slightly askew like real paperwork
+    for (let i = 0; i < 3; i++) {
+      const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.0016, 0.285), paperMat);
+      sheet.position.set(i * 0.004, 0.004 + i * 0.002, i * 0.005);
+      sheet.rotation.y = i * 0.02;
+      board.add(sheet);
+    }
+
+    // ruled lines on the top sheet, so it reads as a checklist
+    for (let i = 0; i < 6; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.0006, 0.004), lineMat);
+      line.position.set(0.004, 0.0108, -0.1 + i * 0.035);
+      board.add(line);
+    }
+
+    const clip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.012, 0.028), clipMat);
+    clip.position.set(0.004, 0.012, 0.128);
+    board.add(clip);
+
+    // one invisible, generous grab volume: a 6mm board is a cruel click target
+    const grab = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, 0.05, 0.36),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    grab.position.set(0, 0.012, 0);
+    grab.userData = { type: 'clipboard' };
+    board.add(grab);
+    this.interactables.push(grab);
+    this.clipboard = board;
+  }
 
   /** Hides the empty case prop once the player has a real built machine. */
   hideCasePlaceholder() {

@@ -112,6 +112,7 @@ const PCIE_SOCKET = 0.0145;      // the PCIe x16 slot body
 const SOCKET_UP = -0.0485;       // 104 mm below the board's top edge
 const SOCKET_BACK = -0.0217;     // 100 mm in from the rear edge
 const DIMM_UP = -0.0497;         // level with the socket, as on a real board
+const DIMM_SLOT_Z = -0.0771;     // the rear DIMM socket, 77 mm behind centre
 
 /** The board's copper, facing the glass: what a clip-on part actually rests on. */
 export const BOARD_SURFACE_X = TRAY.face + BOARD_PCB;
@@ -127,31 +128,29 @@ export const SOCKET = {
 };
 
 /**
- * The DIMM bank. The sticks stand 133 mm tall in their slots, level with the
- * socket, and step sideways one slot pitch apart; A2 + B2 is the dual-channel
- * pair the plan asks for.
+ * The DIMM bank, on the slots the board model actually prints.
  *
- * Along the board's depth the bank is anchored just forward of the tower cooler
- * rather than on the two slots this model prints, which sit 55 mm *behind* its
- * socket - a tower cooler's 110 mm body would swallow them there. Height and
- * standoff are the measured ones.
+ * Measured on motherboard_am4.glb: two sockets 10.6 mm apart, both level with
+ * the CPU socket (fitted X -0.0497) and behind it, with the slot bodies standing
+ * 14 mm off the copper. So each stick gets its own seat here, and the pair is
+ * the dual-channel set step 5 asks for - ordered so the second stick lands on the
+ * socket nearer the CPU, which reads as the one slightly more to the left from
+ * the Build Zone camera.
  */
-const dimmPitch = 0.0095;
+const DIMM_PITCH = 0.0106;
 const dimmCentreY = boardCentreY - DIMM_UP;
 const dimmX = TRAY.face + DIMM_SOCKET + HARDWARE_REAL_DIMS.ram.width / 2;
-const dimmSlotZ = BOARD.z1 - 0.067;
+const dimmSlotZ = boardCentreZ + DIMM_SLOT_Z;   // the rear socket, first in
 export const RAM_SLOTS = {
-  a1: [dimmX, dimmCentreY, dimmSlotZ],
-  a2: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch],
-  b1: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch * 2],
-  b2: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch * 3]
+  rear: [dimmX, dimmCentreY, dimmSlotZ],
+  inner: [dimmX, dimmCentreY, dimmSlotZ + DIMM_PITCH]
 };
 /** Slot heights across the bank, used for the highlight box. */
 export const RAM_SLOT_SPAN = {
   y0: dimmCentreY - ramLength / 2,
   y1: dimmCentreY + ramLength / 2,
   z0: dimmSlotZ - ramThickness / 2,
-  z1: RAM_SLOTS.b2[2] + ramThickness / 2
+  z1: RAM_SLOTS.inner[2] + ramThickness / 2
 };
 
 // ------------------------------------------------------------ PSU shroud
@@ -287,13 +286,16 @@ export const CASE_ZONES = {
     // nothing lined up with the CPU.
     //   long -> +X   the base-to-fin-stack axis: base on the CPU, fins to the glass
     //   thin -> -Z   cross() then sends the fan axis to +Y, so the fan faces up
+    // The 6 mm forward bias is the RAM clearance every tower cooler needs: the
+    // board's DIMM sockets sit behind the socket, and without it the fin stack
+    // clips the first stick.
     anchor: [
       Math.min(
         SOCKET.x + cpuHeight / 2 + HARDWARE_REAL_DIMS.cooler.length / 2,
         CASE_REF.xGlassInner - HARDWARE_REAL_DIMS.cooler.length / 2 - 0.002
       ),
       SOCKET.y,
-      SOCKET.z
+      SOCKET.z + 0.006
     ],
     size: [
       HARDWARE_REAL_DIMS.cooler.length,
@@ -318,8 +320,9 @@ export const CASE_ZONES = {
       dimmCentreY,
       (RAM_SLOT_SPAN.z0 + RAM_SLOT_SPAN.z1) / 2
     ],
-    // dual-channel pair first, so two sticks land in A2 and B2
-    slots: [RAM_SLOTS.a2, RAM_SLOTS.b2],
+    // the two sockets on the board model, rear one first: the second stick then
+    // lands on the socket nearer the CPU, which is the one further left on screen
+    slots: [RAM_SLOTS.rear, RAM_SLOTS.inner],
     size: [
       HARDWARE_REAL_DIMS.ram.width,
       RAM_SLOT_SPAN.y1 - RAM_SLOT_SPAN.y0,
