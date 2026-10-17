@@ -1418,3 +1418,13 @@ body.build-orbiting #build-case-canvas {
 .build-slot-tag.tag-storage { background: rgba(14, 165, 233, 0.2); border: 1px solid #0ea5e9; color: #0ea5e9; }
 .build-slot-tag.tag-psu { background: rgba(249, 115, 22, 0.2); border: 1px solid #f97316; color: #f97316; }
 
+
+/* ================================================================
+   Parts to-do list
+   The markup landed in index.html ahead of its stylesheet and its
+   opener. Until those arrive the panel has to stay out of the way,
+   otherwise it renders as a bare div in the middle of the game.
+   ================================================================ */
+#todo-list-modal {
+  display: none;
+}

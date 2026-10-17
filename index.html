@@ -135,6 +135,26 @@
     </div>
   </div>
 
+  <!-- Parts To-Do List (opened by left-clicking the clipboard on the bench) -->
+  <div id="todo-list-modal">
+    <div class="todo-list-container">
+      <div class="todo-list-head">
+        <div class="todo-list-title-group">
+          <span class="todo-list-title">📋 DANH SÁCH LINH KIỆN CẦN LẤY</span>
+          <span id="todo-list-badge" class="todo-list-badge">BƯỚC 1 / 12</span>
+        </div>
+        <button class="todo-list-close" title="Đóng (ESC)">✕</button>
+      </div>
+
+      <div class="todo-list-progress">
+        <div id="todo-list-progress-fill" class="todo-list-progress-fill"></div>
+      </div>
+      <div id="todo-list-summary" class="todo-list-summary"></div>
+
+      <ul id="todo-list-rows" class="todo-list-rows"></ul>
+    </div>
+  </div>
+
   <!-- Build Mode Modal -->
   <div id="build-mode-modal">
     <div class="build-mode-container">
