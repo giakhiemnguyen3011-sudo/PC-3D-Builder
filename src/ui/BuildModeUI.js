@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import confetti from 'canvas-confetti';
 import { sounds } from '../audio/SoundEffects.js';
 import { BuildScene } from '../scene/BuildScene.js';
@@ -7,14 +7,14 @@ import { ASSEMBLY_STEPS, TOTAL_STEPS, stepAccepts, stepPartNames } from '../data
 import { CASE_ZONES } from '../scene/caseLayout.js';
 
 const POST_SEQUENCE = [
-  { at: 900, state: 'NO_SIGNAL', text: 'Chưa có tín hiệu — đang chờ cáp màn hình' },
-  { at: 2400, state: 'POST', text: 'POST: đang nhận diện CPU, RAM, ổ cứng' },
-  { at: 5600, state: 'OS', text: 'POST thành công — hệ thống đã khởi động' }
+  { at: 900, state: 'NO_SIGNAL', text: 'Chua c� t�n hi?u � dang ch? c�p m�n h�nh' },
+  { at: 2400, state: 'POST', text: 'POST: dang nh?n di?n CPU, RAM, ? c?ng' },
+  { at: 5600, state: 'OS', text: 'POST th�nh c�ng � h? th?ng d� kh?i d?ng' }
 ];
 
 const FALLBACK_GLYPH = {
-  motherboard: '▦', cpu: '▣', cooler: '✳', ram: '▤',
-  gpu: '▭', storage: '▬', psu: '◫'
+  motherboard: '?', cpu: '?', cooler: '?', ram: '?',
+  gpu: '?', storage: '?', psu: '?'
 };
 
 /**
@@ -22,7 +22,7 @@ const FALLBACK_GLYPH = {
  *
  * Hardware slots render real 3D model thumbnails, the selected part rides the
  * cursor inside the Build Zone, and every step demands the right physical action
- * (seat it, latch it, screw it down, route the cables) before the next unlocks.
+ * (seat it, latch it, screw it down) before the next unlocks.
  */
 export class BuildModeUI {
   constructor({ inventoryUI, room, onRequestLock, onAssembled }) {
@@ -40,7 +40,6 @@ export class BuildModeUI {
     this._orbitLast = { x: 0, y: 0 };
 
     this.pasteApplied = false;   // thermal paste on the CPU IHS
-    this.cableTargets = [];
     this.postTimers = [];
     this.isFinished = false;
     this._v = new THREE.Vector3();
@@ -137,7 +136,7 @@ export class BuildModeUI {
   setZoomBadge() {
     const el = this.dom.zoomTag;
     if (!el || !this.scene) return;
-    el.textContent = `🔍 Thu phóng ${Math.round(this.scene.zoom * 100)}%`;
+    el.textContent = `?? Thu ph�ng ${Math.round(this.scene.zoom * 100)}%`;
   }
 
   /**
@@ -150,12 +149,12 @@ export class BuildModeUI {
     const deg = r => Math.round(THREE.MathUtils.radToDeg(r));
     const off = this.scene.isOrbitingOff;
     if (!off) {
-      const text = '🔄 Chuột phải: xoay góc nhìn';
+      const text = '?? Chu?t ph?i: xoay g�c nh�n';
       if (el.textContent !== text) el.textContent = text;
       el.classList.remove('turned');
       return;
     }
-    const text = `🔄 Góc nhìn  ↗${deg(this.scene.orbitYaw)}°  ↑${deg(this.scene.orbitPitch)}°`;
+    const text = `?? G�c nh�n  ?${deg(this.scene.orbitYaw)}�  ?${deg(this.scene.orbitPitch)}�`;
     if (el.textContent !== text) el.textContent = text;
     el.classList.add('turned');
   }
@@ -199,7 +198,7 @@ export class BuildModeUI {
     }
     if (missing.length) {
       this.setToast(
-        `Bước ${step.step} cần ${missing.join(' / ')} — hãy nhặt từ bàn linh kiện và bỏ vào túi (phím E) trước đã.`,
+        `Bu?c ${step.step} c?n ${missing.join(' / ')} � h�y nh?t t? b�n linh ki?n v� b? v�o t�i (ph�m E) tru?c d�.`,
         'warn'
       );
     }
@@ -225,13 +224,11 @@ export class BuildModeUI {
     this.isFinished = false;
     this.pendingPress = null;
     this.pasteApplied = false;
-    this.cableTargets = [];
     this.clearPostTimers();
     if (this.scene) {
       // take every installed part back out, otherwise a rebuild is impossible
       this.returnPartsToBackpack();
       this.scene.hideScrews();
-      this.scene.hideCableTargets();
       this.scene.setPower(false);
       this.scene.lockedZone = null;
       // a fresh chassis arrives closed, exactly like one on the bench
@@ -245,7 +242,7 @@ export class BuildModeUI {
     this.renderChecklist();
     this.renderSlots();
     this.updateGlassUi();
-    this.setToast('Đã đặt lại toàn bộ quy trình lắp ráp.', 'info');
+    this.setToast('�� d?t l?i to�n b? quy tr�nh l?p r�p.', 'info');
   }
 
   /** Gives every part currently seated in the case back to the backpack. */
@@ -264,11 +261,11 @@ export class BuildModeUI {
   finishBuild() {
     if (!this.scene || this.isFinished) return null;
     if (this.completed.size < TOTAL_STEPS) {
-      this.setToast(`Còn ${TOTAL_STEPS - this.completed.size} bước chưa hoàn thành.`, 'warn');
+      this.setToast(`C�n ${TOTAL_STEPS - this.completed.size} bu?c chua ho�n th�nh.`, 'warn');
       return null;
     }
     if (!this.scene.placedParts.size) {
-      this.setToast('Chưa có linh kiện nào nằm trong thùng.', 'warn');
+      this.setToast('Chua c� linh ki?n n�o n?m trong th�ng.', 'warn');
       return null;
     }
 
@@ -282,7 +279,7 @@ export class BuildModeUI {
     if (this.dom.resetBtn) this.dom.resetBtn.style.display = 'none';
     if (this.dom.glassBtn) this.dom.glassBtn.style.display = 'none';
     this.setZoneHint(null);
-    this.setToast('Đã vặn nắp kính. Máy tính của bạn đã sẵn sàng!', 'ok');
+    this.setToast('�� v?n n?p k�nh. M�y t�nh c?a b?n d� s?n s�ng!', 'ok');
     this.renderStep();
     this.renderActionBar();
     this.close();
@@ -309,7 +306,7 @@ export class BuildModeUI {
     this.pendingPress = null;
     this.pasteApplied = false;
     sounds.playSnap();
-    this.setToast(message || `Hoàn thành bước ${stepNumber}.`, 'ok');
+    this.setToast(message || `Ho�n th�nh bu?c ${stepNumber}.`, 'ok');
     this.renderStep();
     this.renderChecklist();
     this.renderSlots();
@@ -320,19 +317,8 @@ export class BuildModeUI {
       return;
     }
     this.currentStep = Math.max(this.currentStep, stepNumber + 1);
-    if (stepNumber === 9) {
-      this.cableTargets = [];
-      this.scene?.hideCableTargets();
-    }
     this.scene?.setFocusZone(this.activeStep()?.zone || null);
     this.updateGhostItem();
-  }
-
-  /** Step 9: draw the headers the player has to click. */
-  ensureCableTargets() {
-    if (!this.cableTargets.length) this.cableTargets = this.buildCableTargets();
-    this.scene?.showCableTargets(this.cableTargets, this.activeStep()?.zone || 'cables');
-    return this.cableTargets;
   }
 
   /** How many parts of the current step are seated *and* latched down. */
@@ -347,8 +333,8 @@ export class BuildModeUI {
   // ------------------------------------------------------------- pointers
   /**
    * The carried part only follows the cursor while the step is actually a
-   * placement. On fastener, paste, press, cable, display and power steps the
-   * cursor is driving something else, and a part swimming around the canvas is
+   * placement. On fastener, paste and press steps the cursor is driving
+   * something else, and a part swimming around the canvas is
    * both misleading and the reason it appeared to escape the chassis.
    */
   get ghostArmed() {
@@ -399,7 +385,7 @@ export class BuildModeUI {
     this.endOrbit();
     this.scene.resetView();
     this.setViewBadge();
-    this.setToast('Đã đưa góc nhìn thùng máy về góc mặc định.');
+    this.setToast('�� dua g�c nh�n th�ng m�y v? g�c m?c d?nh.');
     this.refreshGhost();
   }
 
@@ -452,7 +438,7 @@ export class BuildModeUI {
         this.updateCursorHint();
         if (this.scene.screwsFor(zoneId) === 0) this.finishScrewStep(step);
       } else {
-        this.setToast('Bấm đúng vào đầu ốc màu vàng để siết.', 'warn');
+        this.setToast('B?m d�ng v�o d?u ?c m�u v�ng d? si?t.', 'warn');
       }
       return;
     }
@@ -463,10 +449,10 @@ export class BuildModeUI {
         this.pasteApplied = true;
         this.scene.flashZone('cpu');
         sounds.playClick();
-        this.setToast('Đã bôi keo tản nhiệt lên nắp lưng CPU. Giờ siết 4 ốc của tản khí.', 'ok');
+        this.setToast('�� b�i keo t?n nhi?t l�n n?p lung CPU. Gi? si?t 4 ?c c?a t?n kh�.', 'ok');
         this.startScrewStep(step);
       } else {
-        this.setToast('Bấm vào vị trí CPU trên bo mạch để bôi keo tản nhiệt.', 'warn');
+        this.setToast('B?m v�o v? tr� CPU tr�n bo m?ch d? b�i keo t?n nhi?t.', 'warn');
       }
       return;
     }
@@ -482,16 +468,16 @@ export class BuildModeUI {
         if (done >= step.need) {
           this.pendingPress = null;
           this.completeStep(step.step, done > 1
-            ? `Đã cắm đủ ${done} thanh và kích hoạt kênh đôi.`
-            : 'Đã lắp và ấn khít vào socket.');
+            ? `�� c?m d? ${done} thanh v� k�ch ho?t k�nh d�i.`
+            : '�� l?p v� ?n kh�t v�o socket.');
         } else {
           this.pendingPress = null;
-          this.setToast(`Đã lắp ${done}/${step.need}. Chọn thanh tiếp theo trong danh sách.`, 'info');
+          this.setToast(`�� l?p ${done}/${step.need}. Ch?n thanh ti?p theo trong danh s�ch.`, 'info');
           this.updateGhostItem();
         }
         this.renderActionBar();
       } else {
-        this.setToast(`Bấm vào ${CASE_ZONES[zoneId].label.toLowerCase()} để ấn linh kiện xuống cho khít.`, 'warn');
+        this.setToast(`B?m v�o ${CASE_ZONES[zoneId].label.toLowerCase()} d? ?n linh ki?n xu?ng cho kh�t.`, 'warn');
       }
       return;
     }
@@ -504,15 +490,15 @@ export class BuildModeUI {
 
     // 5. Seat a hardware part
     if (!this.selectedItem) {
-      this.setToast('Chọn linh kiện ở danh sách bên phải trước đã.', 'warn');
+      this.setToast('Ch?n linh ki?n ? danh s�ch b�n ph?i tru?c d�.', 'warn');
       return;
     }
     if (!stepAccepts(step, this.selectedItem)) {
-      this.setToast(`${this.selectedItem.name} không dùng được cho bước này.`, 'warn');
+      this.setToast(`${this.selectedItem.name} kh�ng d�ng du?c cho bu?c n�y.`, 'warn');
       return;
     }
     if (!this.scene.ghostOverTarget) {
-      this.setToast(`Đưa model tới ${CASE_ZONES[zoneId].label.toLowerCase()} rồi bấm chuột trái.`, 'warn');
+      this.setToast(`�ua model t?i ${CASE_ZONES[zoneId].label.toLowerCase()} r?i b?m chu?t tr�i.`, 'warn');
       return;
     }
 
@@ -526,14 +512,14 @@ export class BuildModeUI {
 
     if (this.scene.placedParts.size && this.scene.partAt(zoneId) &&
         [...this.scene.placedParts.values()].filter(p => p.zoneId === zoneId).length >= step.need) {
-      this.setToast('Vị trí này đã đủ linh kiện rồi.', 'warn');
+      this.setToast('V? tr� n�y d� d? linh ki?n r?i.', 'warn');
       return;
     }
 
     this.scene.clearGhost();
     const ok = await this.scene.placePart(item, zoneId, partKey);
     if (!ok) {
-      this.setToast('Không tải được model linh kiện này.', 'warn');
+      this.setToast('Kh�ng t?i du?c model linh ki?n n�y.', 'warn');
       this.updateGhostItem();
       return;
     }
@@ -548,8 +534,8 @@ export class BuildModeUI {
       this.pendingPress = partKey;
       this.setToast(
         step.action === 'paste'
-          ? 'Tản khí đã đặt lên socket. Bấm vào CPU để bôi keo tản nhiệt.'
-          : 'Bấm chuột trái lần nữa vào vị trí này để ấn linh kiện xuống cho khít.',
+          ? 'T?n kh� d� d?t l�n socket. B?m v�o CPU d? b�i keo t?n nhi?t.'
+          : 'B?m chu?t tr�i l?n n?a v�o v? tr� n�y d? ?n linh ki?n xu?ng cho kh�t.',
         'info'
       );
       this.updateGhostItem();
@@ -567,7 +553,7 @@ export class BuildModeUI {
     }
     this.scene.showScrews(step.zone, count);
     this.scene.setFocusZone(step.zone);
-    this.setToast(`Còn ${count} ốc. Bấm vào từng đầu ốc màu vàng để siết chặt.`, 'info');
+    this.setToast(`C�n ${count} ?c. B?m v�o t?ng d?u ?c m�u v�ng d? si?t ch?t.`, 'info');
     this.renderActionBar();
     this.updateGhostItem();
     this.updateCursorHint();
@@ -580,8 +566,8 @@ export class BuildModeUI {
     this.completeStep(
       step.step,
       step.action === 'paste'
-        ? 'Keo tản nhiệt đã bôi và tản khí đã siết chặt.'
-        : 'Đã siết đủ ốc, linh kiện cố định trong thùng.'
+        ? 'Keo t?n nhi?t d� b�i v� t?n kh� d� si?t ch?t.'
+        : '�� si?t d? ?c, linh ki?n c? d?nh trong th�ng.'
     );
   }
 
@@ -590,22 +576,14 @@ export class BuildModeUI {
     const zoneId = step.zone;
 
     if (step.action === 'glass') {
-      const wantOn = step.step === 10;
+      const wantOn = step.step === TOTAL_STEPS;
       if (this.scene.glassOn !== wantOn) {
         this.toggleGlass();
       } else {
         this.setToast(wantOn
-          ? 'Nắp kính đã được lắp lại. Bấm nút để tháo ra nếu cần.'
-          : 'Nắp kính đã tháo rồi.', 'info');
+          ? 'N?p k�nh d� du?c l?p l?i. B?m n�t d? th�o ra n?u c?n.'
+          : 'N?p k�nh d� th�o r?i.', 'info');
       }
-      return;
-    }
-
-    if (step.action === 'cable') {
-      this.ensureCableTargets();
-      const hit = this.pickCable(e);
-      if (hit) this.connectCable(hit);
-      else this.setToast('Bấm vào từng đầu cáp màu cam để cắm dây nguồn.', 'warn');
       return;
     }
 
@@ -613,9 +591,9 @@ export class BuildModeUI {
       if (this.scene.isOverZone(zoneId)) {
         this.scene.flashZone(zoneId);
         sounds.playSnap();
-        this.completeStep(step.step, 'Đã cắm DisplayPort từ card đồ họa ra màn hình.');
+        this.completeStep(step.step, '�� c?m DisplayPort t? card d? h?a ra m�n h�nh.');
       } else {
-        this.setToast('Bấm vào cổng DisplayPort ở mặt sau thùng.', 'warn');
+        this.setToast('B?m v�o c?ng DisplayPort ? m?t sau th�ng.', 'warn');
       }
       return;
     }
@@ -626,69 +604,11 @@ export class BuildModeUI {
         this.scene.flashZone(zoneId);
         sounds.playPowerSwitch();
         this.room.setMonitorState('NO_SIGNAL');
-        this.completeStep(step.step, 'Đã bật nguồn. Hệ thống đang chạy POST...');
+        this.completeStep(step.step, '�� b?t ngu?n. H? th?ng dang ch?y POST...');
         this.schedulePost();
       } else {
-        this.setToast('Bấm vào nút nguồn trên nắp trên của thùng.', 'warn');
+        this.setToast('B?m v�o n�t ngu?n tr�n n?p tr�n c?a th�ng.', 'warn');
       }
-    }
-  }
-
-  // ---------------------------------------------------------------- cables
-  buildCableTargets() {
-    // 24-pin board header, CPU EPS header, PCIe aux and the SATA run
-    return [
-      { id: 'atx24', label: 'cáp 24-pin ATX', offset: [0.0, 0.085, 0.11], done: false },
-      { id: 'eps8', label: 'cáp 8-pin CPU', offset: [-0.055, 0.145, -0.155], done: false },
-      { id: 'pcie8', label: 'cáp 8-pin PCIe', offset: [0.05, -0.03, 0.135], done: false },
-      { id: 'sata', label: 'cáp SATA', offset: [-0.035, -0.115, 0.05], done: false }
-    ];
-  }
-
-  cableWorldPosition(target) {
-    const zone = CASE_ZONES.cables;
-    return this._v.set(
-      zone.anchor[0] + target.offset[0],
-      zone.anchor[1] + target.offset[1],
-      zone.anchor[2] + target.offset[2]
-    );
-  }
-
-  pickCable(e) {
-    const rect = this.scene.canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-
-    let best = null;
-    let bestDist = Infinity;
-    this.scene.pivot.updateMatrixWorld(true);
-    this.cableTargets.forEach(target => {
-      if (target.done) return;
-      const world = this.cableWorldPosition(target).clone();
-      this.scene.pivot.localToWorld(world);
-      const ndc = world.project(this.scene.camera);
-      if (ndc.z > 1) return;
-      const sx = ((ndc.x + 1) / 2) * rect.width;
-      const sy = ((-ndc.y + 1) / 2) * rect.height;
-      const d = Math.hypot(sx - cx, sy - cy);
-      if (d < bestDist) { bestDist = d; best = target; }
-    });
-    return bestDist < 52 ? best : null;
-  }
-
-  connectCable(target) {
-    target.done = true;
-    sounds.playSnap();
-    this.scene?.markCableDone(target.id);
-    const left = this.cableTargets.filter(t => !t.done).length;
-    this.renderActionBar();
-    this.updateCursorHint();
-    if (left === 0) {
-      this.scene?.flashZone('cables');
-      this.completeStep(this.currentStep, 'Đã cắm đủ cáp 24-pin, 8-pin CPU, 8-pin PCIe và SATA.');
-    } else {
-      this.setToast(`Đã cắm ${target.label}. Còn ${left} dây nữa.`, 'info');
     }
   }
 
@@ -709,7 +629,7 @@ export class BuildModeUI {
   }
 
   onPowered() {
-    this.setToast('Chúc mừng! Bạn đã lắp ráp thành công đủ 12 bước.', 'ok');
+    this.setToast('Ch�c m?ng! B?n d� l?p r�p th�nh c�ng d? 12 bu?c.', 'ok');
     this.renderStep();
     this.renderChecklist();
     // confetti needs a real 2D canvas, so never let it break the win state
@@ -751,13 +671,13 @@ export class BuildModeUI {
       row.innerHTML = `
         <div class="build-slot-thumb">
           <img alt="" />
-          <span class="build-slot-fallback">${FALLBACK_GLYPH[item.categoryKey] || '▧'}</span>
+          <span class="build-slot-fallback">${FALLBACK_GLYPH[item.categoryKey] || '?'}</span>
         </div>
         <div class="build-slot-text">
           <div class="build-slot-name">${item.name}</div>
           <div class="build-slot-tag tag-${item.categoryKey}">${item.tag}</div>
         </div>
-        <div class="build-slot-state">${usable ? 'Dùng được' : ''}</div>
+        <div class="build-slot-state">${usable ? 'D�ng du?c' : ''}</div>
       `;
       row.addEventListener('click', () => this.selectSlotItem(item));
       list.appendChild(row);
@@ -792,13 +712,13 @@ export class BuildModeUI {
     const step = this.activeStep();
     sounds.playClick();
     if (step && !stepAccepts(step, item)) {
-      this.setToast(`${item.name} không dùng được cho bước ${step.step}.`, 'warn');
+      this.setToast(`${item.name} kh�ng d�ng du?c cho bu?c ${step.step}.`, 'warn');
       return;
     }
     this.selectedItem = item;
     this.renderSlots();
     await this.updateGhostItem(item);
-    this.setToast(`Đã cầm ${item.name}. Rê chuột trong Build Zone rồi bấm chuột trái để lắp.`, 'info');
+    this.setToast(`�� c?m ${item.name}. R� chu?t trong Build Zone r?i b?m chu?t tr�i d? l?p.`, 'info');
   }
 
   async updateGhostItem(item) {
@@ -822,31 +742,29 @@ export class BuildModeUI {
     const zoneId = step.zone;
 
     if (this.scene.screwsFor(zoneId) > 0) {
-      return this.setZoneHint('🔩 Bấm vào đầu ốc vàng để siết chặt', 'action');
+      return this.setZoneHint('?? B?m v�o d?u ?c v�ng d? si?t ch?t', 'action');
     }
     if (step.action === 'paste' && this.pendingPress && !this.pasteApplied) {
-      return this.setZoneHint('🌡️ Bấm vào CPU để bôi keo tản nhiệt', 'action');
+      return this.setZoneHint('??? B?m v�o CPU d? b�i keo t?n nhi?t', 'action');
     }
     if (step.action === 'seat' && this.pendingPress) {
-      return this.setZoneHint('⬇️ Bấm vào linh kiện để ấn xuống cho khít', 'action');
+      return this.setZoneHint('?? B?m v�o linh ki?n d? ?n xu?ng cho kh�t', 'action');
     }
     if (step.need === 0) {
       const labels = {
-        glass: '🪟 Dùng nút THÁO / ĐÓNG NẮP KÍNH',
-        cable: '🔌 Bấm vào từng đầu cáp màu cam',
-        display: '🖥️ Bấm vào cổng DisplayPort phía sau thùng',
-        power: '⏻ Bấm nút nguồn trên nắp trên'
+        glass: '?? D�ng n�t TH�O / ��NG N?P K�NH',
+        display: '??? B?m v�o c?ng DisplayPort ph�a sau th�ng',
+        power: '? B?m n�t ngu?n tr�n n?p tr�n'
       };
-      if (step.action === 'cable') this.ensureCableTargets();
       return this.setZoneHint(labels[step.action] || '', 'action');
     }
     if (!this.selectedItem) {
-      return this.setZoneHint('👆 Chọn linh kiện ở danh sách bên phải', 'idle');
+      return this.setZoneHint('?? Ch?n linh ki?n ? danh s�ch b�n ph?i', 'idle');
     }
     if (this.scene.ghostOverTarget) {
-      return this.setZoneHint(`✅ ${CASE_ZONES[zoneId].label} — bấm chuột trái để lắp`, 'ready');
+      return this.setZoneHint(`? ${CASE_ZONES[zoneId].label} � b?m chu?t tr�i d? l?p`, 'ready');
     }
-    return this.setZoneHint(`🎯 Đưa tới ${CASE_ZONES[zoneId].label}`, 'idle');
+    return this.setZoneHint(`?? �ua t?i ${CASE_ZONES[zoneId].label}`, 'idle');
   }
 
   setZoneHint(text, kind) {
@@ -862,10 +780,10 @@ export class BuildModeUI {
     const step = this.activeStep();
     if (!step) return;
 
-    if (stepBadge) stepBadge.textContent = `BƯỚC ${step.step} / ${TOTAL_STEPS}`;
+    if (stepBadge) stepBadge.textContent = `BU?C ${step.step} / ${TOTAL_STEPS}`;
     if (stepTitle) stepTitle.textContent = step.title;
     if (stepDesc) stepDesc.textContent = step.instruction;
-    if (stepTip) stepTip.innerHTML = `<strong>💡 Mẹo thực tế:</strong> ${step.tip}`;
+    if (stepTip) stepTip.innerHTML = `<strong>?? M?o th?c t?:</strong> ${step.tip}`;
     if (stepHint) stepHint.textContent = step.shortHint || '';
     if (progress) progress.style.width = `${(this.completed.size / TOTAL_STEPS) * 100}%`;
     this.renderStepParts(step);
@@ -876,7 +794,7 @@ export class BuildModeUI {
   /**
    * Names the hardware this step calls for.
    *
-   * Without this, steps 4 and 7 just say "lắp tản khí" or "lắp bộ nguồn" and a
+   * Without this, steps 4 and 7 just say "l?p t?n kh�" or "l?p b? ngu?n" and a
    * first-time builder has no idea which part on the bench to pick up. The names
    * come from the catalogue, so they always match a real model.
    */
@@ -894,12 +812,12 @@ export class BuildModeUI {
 
     el.style.display = '';
     el.innerHTML = [
-      `<div class="build-step-parts-label">🔎 Linh kiện cần chuẩn bị</div>`,
+      `<div class="build-step-parts-label">?? Linh ki?n c?n chu?n b?</div>`,
       ...parts.map(p => `
         <div class="build-step-part-row">
           <span class="build-step-part-tag">${p.tag}</span>
           <span class="build-step-part-name">${p.label}</span>
-          ${p.variants > 1 ? `<span class="build-step-part-alt">${p.variants} lựa chọn</span>` : ''}
+          ${p.variants > 1 ? `<span class="build-step-part-alt">${p.variants} l?a ch?n</span>` : ''}
         </div>`)
     ].join('');
   }
@@ -907,8 +825,8 @@ export class BuildModeUI {
   updateGlassUi() {
     const { glassTag, glassBtn } = this.dom;
     const on = this.scene?.glassOn;
-    if (glassTag) glassTag.textContent = on ? '🛡️ Nắp kính: Đang lắp' : '🔓 Nắp kính: Đã tháo';
-    if (glassBtn) glassBtn.textContent = on ? '🔓 Tháo Nắp Kính' : '🔒 Lắp Lại Nắp Kính';
+    if (glassTag) glassTag.textContent = on ? '??? N?p k�nh: �ang l?p' : '?? N?p k�nh: �� th�o';
+    if (glassBtn) glassBtn.textContent = on ? '?? Th�o N?p K�nh' : '?? L?p L?i N?p K�nh';
   }
 
   toggleGlass() {
@@ -920,11 +838,11 @@ export class BuildModeUI {
 
     const step = this.activeStep();
     if (step?.action === 'glass') {
-      const wantOn = step.step === 10;
+      const wantOn = step.step === TOTAL_STEPS;
       if (this.scene.glassOn === wantOn) {
         this.completeStep(step.step, wantOn
-          ? 'Đã đóng nắp kính và siết 4 núm vặn.'
-          : 'Đã tháo nắp kính, ruột thùng đang mở.');
+          ? '�� d�ng n?p k�nh v� si?t 4 n�m v?n.'
+          : '�� th�o n?p k�nh, ru?t th�ng dang m?.');
       }
     }
   }
@@ -937,19 +855,15 @@ export class BuildModeUI {
 
     const chips = [];
     const screws = this.scene ? this.scene.screwsFor(step.zone) : 0;
-    if (screws > 0) chips.push(`<div class="build-chip amber">🔩 Còn ${screws} ốc chưa siết</div>`);
+    if (screws > 0) chips.push(`<div class="build-chip amber">?? C�n ${screws} ?c chua si?t</div>`);
     if (step.action === 'paste' && this.pendingPress && !this.pasteApplied) {
-      chips.push('<div class="build-chip cyan">🌡️ Cần bôi keo tản nhiệt</div>');
+      chips.push('<div class="build-chip cyan">??? C?n b�i keo t?n nhi?t</div>');
     }
     if (step.action === 'seat' && this.pendingPress) {
-      chips.push('<div class="build-chip cyan">⬇️ Cần ấn linh kiện xuống</div>');
-    }
-    if (step.action === 'cable' && this.cableTargets.length) {
-      const left = this.cableTargets.filter(t => !t.done).length;
-      if (left) chips.push(`<div class="build-chip amber">🔌 Còn ${left} dây nguồn</div>`);
+      chips.push('<div class="build-chip cyan">?? C?n ?n linh ki?n xu?ng</div>');
     }
     if (this.completed.size >= TOTAL_STEPS) {
-      chips.push('<div class="build-chip green">🎉 Đã hoàn thành cả 12 bước</div>');
+      chips.push('<div class="build-chip green">?? �� ho�n th�nh c? 12 bu?c</div>');
     }
     if (this.dom.finishBtn) {
       const ready = this.completed.size >= TOTAL_STEPS && !this.isFinished;
@@ -967,7 +881,7 @@ export class BuildModeUI {
       const current = step.step === this.currentStep && !done;
       return `
         <div class="build-check${done ? ' done' : ''}${current ? ' current' : ''}">
-          <span class="build-check-num">${done ? '✓' : step.step}</span>
+          <span class="build-check-num">${done ? '?' : step.step}</span>
           <span class="build-check-name">${step.shortName}</span>
         </div>
       `;

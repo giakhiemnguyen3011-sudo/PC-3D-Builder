@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { loadModelCopy } from '../scene/ModelCache.js';
-import { realDimsFor } from '../data/hardwareDims.js';
 import { sounds } from '../audio/SoundEffects.js';
-import { buildFittedModel } from '../scene/ModelFit.js';
+import { buildFittedModel, fitOptionsFor } from '../scene/ModelFit.js';
 
 export class HeldItemManager {
   constructor(camera, scene, playerControls) {
@@ -128,13 +127,10 @@ export class HeldItemManager {
     const loadAndAttach = cloned => {
       // Real-world metres, laid flat. Tiny parts (CPU pins, RAM chips) get a
       // readability floor so they stay visible in the hand.
-      const { group, size } = buildFittedModel(cloned, {
-        realSize: itemData.realSize,
-        realDims: realDimsFor(itemData),
+      const { group, size } = buildFittedModel(cloned, fitOptionsFor(itemData, {
         minSize: 0.05,
-        maxSize: 0.34,
-        flat: true
-      });
+        maxSize: 0.34
+      }));
       // buildFittedModel seats the part with minY = 0, so its centre sits half a
       // height above the origin: pull it back so the part rests in the palm.
       group.position.y -= size.y / 2;

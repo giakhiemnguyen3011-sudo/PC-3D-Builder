@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { sounds } from '../audio/SoundEffects.js';
-import { buildFittedModel } from './ModelFit.js';
+import { buildFittedModel, fitOptionsFor } from './ModelFit.js';
 
 export class PlacedItemManager {
   constructor(scene) {
@@ -20,11 +20,10 @@ export class PlacedItemManager {
     this.loader.load(
       itemData.modelPath,
       gltf => {
-        // Real-world metres, laid flat and straight, resting on y = 0
-        const { group } = buildFittedModel(gltf.scene, {
-          realSize: itemData.realSize,
-          flat: true
-        });
+        // Real-world metres, laid flat and straight, resting on y = 0. The same
+        // per-axis fit the shelf and the Build Zone use: a part dropped on the
+        // workbench has to be the same shape it was on the bench.
+        const { group } = buildFittedModel(gltf.scene, fitOptionsFor(itemData));
 
         // Long edge along the world X axis, label side towards the room
         const yaw = new THREE.Group();

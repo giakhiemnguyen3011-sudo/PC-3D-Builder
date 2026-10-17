@@ -108,7 +108,7 @@ export class ItemPreviewScene {
   }
 
   setModel(model, options = {}) {
-    const { alignFlat = true, autoFit = 0.95, tilt = this.viewTilt } = options;
+    const { alignFlat = true, autoFit = 0.95, tilt = this.viewTilt, realDims = null } = options;
 
     this.resize();
 
@@ -130,7 +130,28 @@ export class ItemPreviewScene {
     baseWrapper.position.set(-center.x, -center.y, -center.z);
 
     const scaleGroup = new THREE.Group();
-    scaleGroup.scale.setScalar(autoFit / nativeMax);
+    // Frame the part to fill the panel, but in its REAL proportions: a plain
+    // uniform scale showed the Corsair Dominator (native cross-section nearly
+    // square) as a 55 mm-thick brick, while the same item on the bench and in
+    // the Build Zone is a 7 mm DIMM. The per-axis ratio is renormalised so the
+    // framing is unchanged.
+    const auto = autoFit / nativeMax;
+    if (realDims) {
+      const aligned = box.getSize(new THREE.Vector3());
+      const wanted = [
+        realDims.length ?? aligned.x,
+        realDims.height ?? realDims.thickness ?? aligned.y,
+        realDims.width ?? aligned.z
+      ];
+      const ratio = new THREE.Vector3(
+        wanted[0] / (aligned.x || 1),
+        wanted[1] / (aligned.y || 1),
+        wanted[2] / (aligned.z || 1)
+      );
+      scaleGroup.scale.copy(ratio).multiplyScalar(auto / Math.max(ratio.x, ratio.y, ratio.z, 1e-9));
+    } else {
+      scaleGroup.scale.setScalar(auto);
+    }
     scaleGroup.add(baseWrapper);
 
     // Outer pivot: view tilt here, auto-spin added on top during render

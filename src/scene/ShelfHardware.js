@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { ALL_HARDWARE_ITEMS } from '../data/hardware.js';
-import { buildFittedModel } from './ModelFit.js';
-import { realDimsFor } from '../data/hardwareDims.js';
+import { buildFittedModel, fitOptionsFor } from './ModelFit.js';
 import { getShelfLayout } from './shelfLayout.js';
 import { loadModelCopy, streamModels } from './ModelCache.js';
 
@@ -101,11 +100,7 @@ export class ShelfHardware {
 
     // Real-world metres per axis + auto flat/straight alignment (rests on y = 0)
     const copy = root.clone(true);
-    const { group } = buildFittedModel(copy, {
-      realSize: item.realSize,
-      realDims: realDimsFor(item),
-      flat: true
-    });
+    const { group } = buildFittedModel(copy, fitOptionsFor(item));
 
     // Long edge runs along the bench, front face turns into the room
     const yaw = new THREE.Group();

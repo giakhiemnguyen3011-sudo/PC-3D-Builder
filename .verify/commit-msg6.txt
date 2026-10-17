@@ -1,0 +1,41 @@
+Restore image quality and fix picking up parts, which had broken
+
+Nothing could be picked up. My fault, and worse than a stutter.
+
+getRaycastTargets() cached the crosshair's target list and only rebuilt it when
+a source array changed length. Two faults: it initialised the cache empty and
+never filled it on the first call, and ShelfHardware._swapIn() splices a
+placeholder out and pushes the real model in one step, so the length never
+changes anyway. The list therefore stayed empty for the whole session and the
+crosshair had nothing to aim at - 31 items on the bench, 0 reachable.
+
+The cache was optimising the wrong thing. Rebuilding a few dozen entries into a
+reused array costs nothing measurable, and the raycast it feeds was already
+gated separately on whether the camera moved. Refilled every frame now.
+
+Image quality reverted as asked, all of it:
+- removed PerformanceManager and its adaptive 0.5x-2x pixel ratio; the drawing
+  buffer is fixed at min(devicePixelRatio, 2) again
+- shadow map back to 2048 and PCFSoftShadowMap instead of 1024 and PCF
+- the POST sequence repaints its canvas every frame again instead of 5 times a
+  second, which was visibly choppy
+- dropped the #perf-readout element and its CSS
+
+Kept, because none of it changes a single pixel:
+- shadowMap.autoUpdate off with a refresh every 4th frame. Same image, same
+  filter, same resolution - just not redrawn 15 times a second for nothing.
+  markWorldChanged() still forces an immediate redraw on pickup or drop.
+- the hover ray is skipped when neither the camera nor the world has moved:
+  1.44 ms -> 0.006 ms standing still, 0.073 ms while sweeping the bench
+- reused vectors, and HUD nodes only written when a value actually changes
+
+Two real bugs found along the way stay fixed:
+- a picked-up part could still be hovered and clicked again, because hideItem()
+  only sets visible = false and three.js r174 raycasts invisible objects
+- the crosshair ray lagged a frame behind, since setFromCamera needs the camera
+  matrixWorld that renderer.render() has not refreshed yet
+
+verify-performance.mjs is now 20 tests built around the real Game, including a
+full pick-up and return round trip and a check that the target list holds the
+real models rather than discarded placeholders. Reintroducing the cache bug
+fails six of them, so this cannot slip through again.

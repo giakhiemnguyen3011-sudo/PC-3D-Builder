@@ -1,0 +1,13 @@
+Add realistic PC assembly build mode
+
+Replace the placeholder case and iron rack with a real mid-tower case and a
+long white wooden parts table.
+
+- caseLayout/BuildScene: dimensioned ATX case with x-ray shell, real
+  motherboard tray, PSU shroud, fan cutouts, standoff pattern and mount poses
+- assemblyPlan/BuildModeUI: 12-step guided build (glass, board, paste, CPU,
+  RAM, M.2, PSU, GPU, cables, glass refit, DisplayPort, power on)
+- ModelFit/shelfLayout: real-world sized hardware laid flat on a self-sizing table
+- Game: the finished machine becomes one grouped, pickable object that can be
+  turned but never tilted or stowed; parts dropped on the floor return to the table
+- skip the world render while build mode is open for a steadier frame rate

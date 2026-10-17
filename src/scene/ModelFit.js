@@ -1,4 +1,67 @@
 import * as THREE from 'three';
+import { realDimsFor } from '../data/hardwareDims.js';
+
+/**
+ * The fitting options every path must use, so a part is the same shape on the
+ * bench, in the hand, dropped on the workbench and in the Build Zone.
+ *
+ * This exists because one path used to pass only `realSize`. Uniform scaling
+ * keeps whatever proportions the downloader authored, which for the Corsair
+ * Dominator GLB (a box whose cross-section is nearly square) produced a
+ * 133 x 54 x 55 mm brick, and for the G.Skill Trident a stick three times too
+ * thick that stood on its edge. Both were wrong while the shelf and the Build
+ * Zone showed the correct 133 x 7 x 45 mm DIMM, because they *did* pass the
+ * real per-axis dimensions.
+ *
+ * `extra` lets a caller add its own constraints - the held part, for instance,
+ * clamps the uniform size - without losing the per-axis shape.
+ */
+export function fitOptionsFor(item, extra = null) {
+  const options = {
+    realSize: item.realSize,
+    realDims: realDimsFor(item),
+    flat: true
+  };
+  // A CPU is a slab of dark green/black substrate with a metal lid on it. The
+  // shipped models are authored almost black (one is literally rgb 0,0,0), which
+  // turns the part into a hole in the case. Lifting the darks to a readable PCB
+  // grey, plus a touch of flat emissive for the textured ones, keeps the IHS
+  // readable without washing out the detail.
+  if (item.categoryKey === 'cpu') options.brighten = 0.42;
+  return extra ? { ...options, ...extra } : options;
+}
+
+/**
+ * Raises near-black materials to a readable lightness and gives everything a
+ * small flat lift, so a part does not disappear into a dark chassis.
+ *
+ * Materials that carry a texture are left alone on colour - the map already
+ * decides the tone - and only get the emissive lift.
+ */
+export function brightenModel(root, minLightness = 0.42, emissive = 0.07) {
+  if (!root || !root.traverse) return root;
+  const hsl = { h: 0, s: 0, l: 0 };
+  root.traverse(node => {
+    if (!node.isMesh) return;
+    const mats = Array.isArray(node.material) ? node.material : [node.material];
+    for (const mat of mats) {
+      if (!mat) continue;
+      if (mat.color && !mat.map) {
+        mat.color.getHSL(hsl);
+        if (hsl.l < minLightness) {
+          // keep the hue, drop some of the saturation: a saturated lift reads as
+          // plastic rather than as a lit PCB
+          mat.color.setHSL(hsl.h, Math.min(hsl.s, 0.35), minLightness);
+        }
+      }
+      if (mat.emissive && emissive > 0) {
+        mat.emissive.setScalar(emissive);
+        if (mat.emissiveIntensity === undefined) mat.emissiveIntensity = 1;
+      }
+    }
+  });
+  return root;
+}
 
 const AXES = [
   new THREE.Vector3(1, 0, 0),
@@ -106,7 +169,8 @@ export function buildFittedModel(model, options = {}) {
     realDims = null,
     minSize = 0,
     maxSize = Number.POSITIVE_INFINITY,
-    flat = true
+    flat = true,
+    brighten = 0
   } = options;
 
   const { size: nativeSize, center: nativeCenter } = measureModel(model);
@@ -164,6 +228,8 @@ export function buildFittedModel(model, options = {}) {
 
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
+
+  if (brighten > 0) brightenModel(root, brighten, Math.min(0.09, brighten * 0.18));
 
   return { group: root, box, size: box.getSize(new THREE.Vector3()), scale };
 }

@@ -1,0 +1,13 @@
+import { register } from "node:module";
+register("file:///D:/pc-builder-3d/.verify/pc3d-hooks.mjs");
+process.env.PC3D_PUBLIC = "D:/pc-builder-3d/public/";
+globalThis.requestAnimationFrame = () => 1; globalThis.setTimeout = () => 0; globalThis.devicePixelRatio = 1;
+const mk=()=>({width:900,height:700,clientWidth:900,clientHeight:700,style:{},classList:{add(){},remove(){},toggle(){},contains(){return false}},getContext:()=>new Proxy({},{get:()=>()=>{}}),getBoundingClientRect:()=>({left:0,top:0,right:900,bottom:700,width:900,height:700}),addEventListener(){},appendChild(c){return c},querySelector:()=>mk(),querySelectorAll:()=>[]});
+const r=new Map(); globalThis.document={createElement:mk,getElementById:id=>{if(!r.has(id))r.set(id,mk(id));return r.get(id)},addEventListener(){},removeEventListener(){},querySelector:mk,body:mk("b")};
+globalThis.window={addEventListener(){},removeEventListener(){},innerWidth:1280,innerHeight:720,devicePixelRatio:1};
+const THREE = await import("file:///D:/pc-builder-3d/node_modules/three/build/three.module.js");
+const { BuildScene } = await import("file:///D:/pc-builder-3d/src/scene/BuildScene.js");
+const s = new BuildScene(mk("c"));
+const bag = new Map();
+s.caseGroup.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color){ bag.set(o.material.color.getHexString(),(bag.get(o.material.color.getHexString())||0)+1); }});
+for(const [k,v] of [...bag].sort()) console.log('0x'+k,'x'+v);

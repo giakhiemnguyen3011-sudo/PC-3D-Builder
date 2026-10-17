@@ -1,4 +1,5 @@
 import { ALL_HARDWARE_ITEMS, HARDWARE_CATEGORIES } from '../data/hardware.js';
+import { realDimsFor } from '../data/hardwareDims.js';
 import { sounds } from '../audio/SoundEffects.js';
 
 export class InventoryUI {
@@ -146,7 +147,8 @@ export class InventoryUI {
     this.showDetailPanel(item);
 
     if (this.previewScene) {
-      this.previewScene.loadItemModel(item.modelPath);
+      // real proportions, so the panel shows the part that is actually on the bench
+      this.previewScene.loadItemModel(item.modelPath, { realDims: realDimsFor(item) });
     }
   }
 

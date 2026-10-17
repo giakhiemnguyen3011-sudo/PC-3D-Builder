@@ -409,30 +409,55 @@ export class Room {
   }
 
   createMonitor() {
-    // Monitor positioned on the right side of the desk
-    const monX = 0.75;
-    const monY = 0.82; // Table surface
-    const monZ = -0.2;
-
-    const bezelMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.3, metalness: 0.8 });
-
-    const standBase = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.015, 0.24), bezelMat);
-    standBase.position.set(monX, monY + 0.01, monZ);
-    standBase.receiveShadow = true;
-    this.group.add(standBase);
-
-    const standArm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.35, 0.05), bezelMat);
-    standArm.position.set(monX, monY + 0.18, monZ - 0.06);
-    standArm.rotation.x = -0.1;
-    this.group.add(standArm);
-
-    // Monitor Body (27" 16:9 monitor: ~62cm wide, ~36cm high)
-    const monW = 0.68;
+    // A 27" 16:9 panel on the right of the desk, angled towards the player.
+    const monW = 0.68;   // 27" is about 62cm of panel
     const monH = 0.40;
-    const monBody = new THREE.Mesh(new THREE.BoxGeometry(monW, monH, 0.03), bezelMat);
-    monBody.position.set(monX, monY + 0.34, monZ);
-    monBody.rotation.y = -0.25; // angled slightly towards player
-    this.group.add(monBody);
+    const monYaw = -0.25;
+
+    const body = new THREE.Group();
+    body.position.set(0.75, 0.82, -0.2);
+    body.rotation.y = monYaw;
+    this.group.add(body);
+    this.monitorBody = body;
+
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x14171c, roughness: 0.44, metalness: 0.5 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x2b313b, roughness: 0.28, metalness: 0.85 });
+
+    // stand: a weighted plate and a neck that leans the panel back a few degrees.
+    // The neck has to stay behind the panel: at the authored depth it poked its
+    // top through the screen and showed up as a black block in the middle of the
+    // panel.
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.016, 0.22), trimMat);
+    base.position.set(0, 0.008, 0.012);
+    body.add(base);
+
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.27, 0.03), trimMat);
+    neck.position.set(0, 0.155, -0.05);
+    neck.rotation.x = 0.07;
+    body.add(neck);
+
+    // the panel itself, with the screen recessed a centimetre into the bezel
+    const panel = new THREE.Group();
+    panel.position.set(0, 0.375, 0);
+    panel.rotation.x = -0.04;
+    body.add(panel);
+    this.monitorPanel = panel;
+
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(monW, monH, 0.022), shellMat);
+    panel.add(shell);
+
+    // a slightly wider lower chin, the way 16:9 panels are actually built
+    const chin = new THREE.Mesh(new THREE.BoxGeometry(monW + 0.012, 0.05, 0.026), shellMat);
+    chin.position.set(0, -monH / 2 + 0.005, 0.001);
+    panel.add(chin);
+
+    const led = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.003, 0.002),
+      new THREE.MeshBasicMaterial({ color: 0x94a3b8 })
+    );
+    led.position.set(monW / 2 - 0.05, -monH / 2 + 0.006, 0.0135);
+    panel.add(led);
+    this.monitorLed = led;
 
     this.monitorCanvas = document.createElement('canvas');
     this.monitorCanvas.width = 1024;
@@ -440,42 +465,171 @@ export class Room {
     this.monitorContext = this.monitorCanvas.getContext('2d');
     this.monitorTexture = new THREE.CanvasTexture(this.monitorCanvas);
     this.monitorTexture.minFilter = THREE.LinearFilter;
+    this.monitorTexture.anisotropy = 4;
 
     this.renderMonitorScreen();
 
+    // The panel is emissive: it is the one light source in the desk that is
+    // meant to read as "on" rather than "lit by the room".
     const screenMat = new THREE.MeshBasicMaterial({ map: this.monitorTexture });
-
     this.monitorScreenMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(monW - 0.02, monH - 0.02),
+      new THREE.PlaneGeometry(monW - 0.03, monH - 0.036),
       screenMat
     );
-    this.monitorScreenMesh.position.set(0, 0, 0.016);
-    monBody.add(this.monitorScreenMesh);
+    this.monitorScreenMesh.position.set(0, 0.004, 0.0112);
+    panel.add(this.monitorScreenMesh);
 
-    monBody.userData = { type: 'monitor' };
-    this.interactables.push(monBody);
+    // glass sheen: a soft diagonal wash over the panel, so it reads as glass and
+    // not as a sticker
+    const sheenMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.05, depthWrite: false
+    });
+    const sheen = new THREE.Mesh(new THREE.PlaneGeometry(monW - 0.03, monH - 0.036), sheenMat);
+    sheen.position.set(0, 0.004, 0.0116);
+    panel.add(sheen);
+
+    // Video input on the lower back edge, where a monitor really keeps it. It
+    // faces the case on the other side of the desk, and it is the second half of
+    // the wiring task: click the case's port, then this.
+    const portMat = new THREE.MeshStandardMaterial({
+      color: 0x0b0d10, roughness: 0.5, metalness: 0.4
+    });
+    const port = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.006, 0.005), portMat);
+    port.position.set(-0.19, -monH / 2 + 0.012, -0.014);
+    port.rotation.x = 0.5;
+    port.name = 'hdmiPortAnchor';
+    port.userData = { type: 'monitorPort', portName: 'HDMI' };
+    panel.add(port);
+    this.interactables.push(port);
+
+    // halo that lights up when the case side has already been clicked
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(0.016, 0.0022, 6, 20),
+      new THREE.MeshBasicMaterial({
+        color: 0x38bdf8, transparent: true, opacity: 0, depthWrite: false
+      })
+    );
+    halo.position.copy(port.position);
+    halo.rotation.copy(port.rotation);
+    halo.rotation.x += Math.PI / 2;
+    panel.add(halo);
+    this.monitorPortHalo = halo;
+
+    const face = new THREE.Mesh(new THREE.BoxGeometry(monW, monH, 0.03), shellMat);
+    face.position.set(0, 0, -0.02);
+    panel.add(face);
+    face.userData = { type: 'monitor' };
+    this.interactables.push(face);
+    shell.userData = { type: 'monitor' };
+    this.interactables.push(shell);
+  }
+
+  /**
+   * The video port on a freshly built machine, so the player can plug the case
+   * into the monitor. It sits where the card's bracket is: on the rear strip of
+   * the chassis, at the height of the expansion slots.
+   *
+   * @param {THREE.Object3D} machine the assembled group standing on the bench
+   */
+  addVideoPortToMachine(machine) {
+    if (!machine) return null;
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.016, 0.006),
+      new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.5, metalness: 0.4 })
+    );
+    // case-local: rear panel, just under the top of the expansion-slot strip
+    body.position.set(-0.012, 0.272, -0.219);
+    body.userData = { type: 'pcVideoPort', portName: 'DisplayPort' };
+    machine.add(body);
+
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(0.026, 0.0026, 6, 20),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6, depthWrite: false })
+    );
+    halo.position.copy(body.position);
+    halo.position.z -= 0.004;
+    machine.add(halo);
+
+    this.machinePort = body;
+    this.machinePortHalo = halo;
+    this.registerMachinePort(body);
+    return body;
+  }
+
+  /** Keeps the machine's port in the raycast list only while it is on the bench. */
+  registerMachinePort(port) {
+    if (!port) return;
+    if (!this.interactables.includes(port)) this.interactables.push(port);
+    if (this.machinePortHalo) this.machinePortHalo.visible = true;
+  }
+
+  unregisterMachinePort() {
+    if (this.machinePort) {
+      const at = this.interactables.indexOf(this.machinePort);
+      if (at !== -1) this.interactables.splice(at, 1);
+    }
+    if (this.machinePortHalo) this.machinePortHalo.visible = false;
+  }
+
+  /** Highlights whichever end of the cable the player has to click next. */
+  setCableTaskArmed(armed, connected) {
+    if (this.monitorPortHalo) this.monitorPortHalo.material.opacity = armed ? 0.75 : 0;
+    if (this.machinePortHalo) this.machinePortHalo.material.opacity = connected ? 0 : 0.6;
+  }
+
+  /** Draws the HDMI run from the machine's port to the monitor's port. */
+  connectCable() {
+    if (this.videoCable) return;
+    const from = this.machinePort;
+    const to = this.monitorBody && this.monitorBody.getObjectByName('hdmiPortAnchor');
+    if (!from) return;
+
+    const a = new THREE.Vector3();
+    from.getWorldPosition(a);
+    const b = new THREE.Vector3();
+    if (to) {
+      to.getWorldPosition(b);
+    } else {
+      b.set(0.75, 0.9, -0.2);
+    }
+    // drape it: down off the case, along the desk, up into the panel
+    const mid = a.clone().lerp(b, 0.5);
+    mid.y = Math.min(a.y, b.y) - 0.16;
+    mid.z += 0.08;
+    const curve = new THREE.CatmullRomCurve3([
+      a.clone(),
+      a.clone().add(new THREE.Vector3(0.04, -0.1, 0.06)),
+      mid,
+      b.clone().add(new THREE.Vector3(-0.05, -0.09, 0.05)),
+      b.clone()
+    ]);
+    const cable = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 42, 0.0042, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.62, metalness: 0.1 })
+    );
+    cable.name = 'hdmiCable';
+    cable.castShadow = false;
+    this.scene.add(cable);
+    this.videoCable = cable;
+    if (this.monitorPortHalo) this.monitorPortHalo.material.opacity = 0;
+    if (this.machinePortHalo) this.machinePortHalo.material.opacity = 0;
+  }
+
+  /** Drops the cable again, e.g. when the machine is picked up. */
+  removeCable() {
+    if (!this.videoCable) return;
+    this.scene.remove(this.videoCable);
+    this.videoCable.geometry.dispose();
+    this.videoCable.material.dispose();
+    this.videoCable = null;
   }
 
   createPeripherals() {
-    const pY = 0.82; // Table top
+    const pY = 0.82; // table top
 
-    const kbMat = new THREE.MeshStandardMaterial({ color: 0x1e2229, roughness: 0.5 });
-    const kb = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.02, 0.15), kbMat);
-    kb.position.set(0.45, pY + 0.01, 0.22);
-    kb.rotation.y = -0.15;
-    this.group.add(kb);
-
-    const rgbKbMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-    const rgbKb = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.005, 0.01), rgbKbMat);
-    rgbKb.position.set(0.45, pY + 0.022, 0.29);
-    rgbKb.rotation.y = -0.15;
-    this.group.add(rgbKb);
-
-    const mouseMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.4 });
-    const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.12), mouseMat);
-    mouse.position.set(0.82, pY + 0.015, 0.2);
-    mouse.rotation.y = -0.1;
-    this.group.add(mouse);
+    this.createKeyboard(0.45, pY, 0.22, -0.15);
+    this.createMouse(0.82, pY, 0.2, -0.1);
 
     const toolMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3, metalness: 0.7 });
     const screwdriver = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2), toolMat);
@@ -489,6 +643,140 @@ export class Room {
     pasteTube.rotation.y = 0.4;
     pasteTube.position.set(-0.92, pY + 0.01, 0.1);
     this.group.add(pasteTube);
+  }
+
+  /**
+   * A tenkeyless board: wedge chassis, an instanced keycap grid on a real
+   * stagger, and an RGB strip along the front lip. The keycaps are one instanced
+   * mesh, so the whole keyboard costs two draw calls.
+   */
+  createKeyboard(x, y, z, yaw) {
+    const kb = new THREE.Group();
+    kb.position.set(x, y, z);
+    kb.rotation.y = yaw;
+    this.group.add(kb);
+
+    const caseMat = new THREE.MeshStandardMaterial({ color: 0x191d24, roughness: 0.46, metalness: 0.35 });
+    const keyMat = new THREE.MeshStandardMaterial({ color: 0x2b3038, roughness: 0.62, metalness: 0.05 });
+    const accentKeyMat = new THREE.MeshStandardMaterial({ color: 0x39414d, roughness: 0.58 });
+
+    const bw = 0.36;   // board width
+    const bd = 0.135;  // board depth
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.018, bd), caseMat);
+    chassis.position.y = 0.009;
+    kb.add(chassis);
+
+    // a low front lip, which is what makes a keyboard read as a keyboard
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.004, 0.008, 0.012), caseMat);
+    lip.position.set(0, 0.004, bd / 2 - 0.004);
+    kb.add(lip);
+
+    // RGB strip under the front lip
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(bw - 0.02, 0.003, 0.006),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+    );
+    strip.position.set(0, 0.005, bd / 2 + 0.002);
+    kb.add(strip);
+
+    // unit layout: [x offset in key units, width in key units]
+    const u = 0.0185;      // one key
+    const gap = 0.0016;
+    const rows = [
+      // function row
+      [[0.5, 1], [1.75, 1], [3, 1], [4.25, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [13, 1], [14.25, 1], [15.5, 1]],
+      // number row
+      [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [13, 1], [14, 2]],
+      // tab row
+      [[0.25, 1.5], [1.75, 1], [2.75, 1], [3.75, 1], [4.75, 1], [5.75, 1], [6.75, 1], [7.75, 1], [8.75, 1], [9.75, 1], [10.75, 1], [11.75, 1], [12.75, 1.5], [14.5, 1]],
+      // home row
+      [[0.5, 1.75], [2.25, 1], [3.25, 1], [4.25, 1], [5.25, 1], [6.25, 1], [7.25, 1], [8.25, 1], [9.25, 1], [10.25, 1], [11.25, 1], [12.25, 1], [13.25, 2.75]],
+      // shift row
+      [[0.75, 2.25], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1.75], [13.75, 1.25]],
+      // space row
+      [[0.25, 1.25], [1.5, 1.25], [2.75, 6.25], [9, 1.25], [10.25, 1.25], [11.5, 1.25], [12.75, 1.25]]
+    ];
+
+    const keyGeo = new THREE.BoxGeometry(u - gap, 0.009, u - gap);
+    const total = rows.reduce((n, row) => n + row.length, 0);
+    const keys = new THREE.InstancedMesh(keyGeo, keyMat, total);
+    keys.castShadow = true;
+    keys.receiveShadow = true;
+    const accent = new THREE.InstancedMesh(keyGeo, accentKeyMat, 0);
+    void accent;
+
+    const m = new THREE.Matrix4();
+    const tint = new THREE.Color();
+    let index = 0;
+    rows.forEach((row, r) => {
+      const zRow = -bd / 2 + 0.016 + r * (u + gap * 1.6);
+      row.forEach(([offset, width]) => {
+        const w = width * u - gap;
+        m.makeScale(width, 1, 1);
+        m.setPosition(
+          -bw / 2 + 0.012 + offset * u + w / 2 - u / 2,
+          0.0225 + (r === 5 ? 0 : 0),
+          zRow
+        );
+        m.scale(new THREE.Vector3(width, 1, 1));
+        keys.setMatrixAt(index, m);
+        // row tints: the function row sits back in the shadow, the WASD block is
+        // the accent cluster, the modifiers are lighter
+        const isFn = r === 0;
+        const isMod = width > 1.2;
+        tint.setHex(isFn ? 0x232830 : isMod ? 0x39414d : 0x2b3038);
+        keys.setColorAt(index, tint);
+        index++;
+      });
+    });
+    keys.instanceMatrix.needsUpdate = true;
+    if (keys.instanceColor) keys.instanceColor.needsUpdate = true;
+    kb.add(keys);
+
+    const feet = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.04, 0.004, bd - 0.04), caseMat);
+    feet.position.y = 0.002;
+    kb.add(feet);
+  }
+
+  /** A gaming mouse: rounded shell, split buttons, scroll wheel, RGB underside. */
+  createMouse(x, y, z, yaw) {
+    const mouse = new THREE.Group();
+    mouse.position.set(x, y, z);
+    mouse.rotation.y = yaw;
+    this.group.add(mouse);
+
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x1b1f26, roughness: 0.34, metalness: 0.2 });
+    const buttonMat = new THREE.MeshStandardMaterial({ color: 0x262c35, roughness: 0.3, metalness: 0.25 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.7 });
+
+    // shell: a capsule squashed into a mouse silhouette
+    const shell = new THREE.Mesh(new THREE.CapsuleGeometry(0.026, 0.055, 6, 14), shellMat);
+    shell.rotation.z = Math.PI / 2;
+    shell.scale.set(1, 1, 0.72);
+    shell.position.set(0, 0.026, 0.004);
+    shell.castShadow = true;
+    mouse.add(shell);
+
+    // the two main buttons, canted forward off the middle line
+    [-1, 1].forEach(side => {
+      const btn = new THREE.Mesh(new THREE.BoxGeometry(0.021, 0.012, 0.05), buttonMat);
+      btn.position.set(side * 0.012, 0.035, -0.036);
+      btn.rotation.z = side * 0.08;
+      btn.rotation.x = -0.06;
+      mouse.add(btn);
+    });
+
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.008, 12), wheelMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(0, 0.042, -0.03);
+    mouse.add(wheel);
+
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, 0.002, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+    );
+    stripe.position.set(0, 0.004, 0.01);
+    mouse.add(stripe);
   }
 
   createComputerCasePlaceholder() {
@@ -614,65 +902,105 @@ export class Room {
       ctx.fillRect(50, 480, w - 100, 24);
       ctx.fillStyle = '#38bdf8';
       ctx.fillRect(50, 480, (w - 100) * Math.min(1, this.postProgress), 24);
-    } else if (this.monitorState === 'OS') {
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, '#0f172a');
-      grad.addColorStop(0.5, '#1e1b4b');
-      grad.addColorStop(1, '#0284c7');
-      ctx.fillStyle = grad;
+} else if (this.monitorState === 'OS') {
+      // Desktop: wallpaper, a build-report window and a taskbar, so the panel
+      // reads as a machine that came up rather than a splash card.
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, '#0b1220');
+      bg.addColorStop(0.55, '#152a45');
+      bg.addColorStop(1, '#0f766e');
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-      for (let x = 0; x < w; x += 64) {
+      ctx.strokeStyle = 'rgba(148, 197, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 48) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, h);
         ctx.stroke();
       }
+      for (let y = 0; y < h; y += 48) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 46px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('?? CH�C M?NG B?N �� L?P R�P TH�NH C�NG!', w / 2, 130);
+      // top bar
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.82)';
+      ctx.fillRect(0, 0, w, 34);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '600 17px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PC BUILDER OS', 18, 18);
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'right';
+      ctx.fillText('build complete', w - 18, 18);
 
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '26px "Segoe UI", sans-serif';
-      ctx.fillText('PC BUILDER OS � H? TH?NG HO?T �?NG HO�N H?O', w / 2, 180);
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-      ctx.strokeStyle = '#38bdf8';
+      // report window
+      const wx = 96;
+      const wy = 58;
+      const ww = w - 192;
+      const wh = h - 124;
+      ctx.fillStyle = 'rgba(10, 18, 32, 0.93)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
       ctx.lineWidth = 2;
-      ctx.roundRect(140, 220, w - 280, 260, 16);
+      ctx.beginPath();
+      ctx.roundRect(wx, wy, ww, wh, 10);
       ctx.fill();
       ctx.stroke();
 
-      ctx.font = '22px "Segoe UI", sans-serif';
+      // window title bar
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.beginPath();
+      ctx.roundRect(wx, wy, ww, 34, 10);
+      ctx.fill();
+      ctx.fillStyle = '#e0f2fe';
+      ctx.font = '600 16px "Segoe UI", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#e2e8f0';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('build-report.txt', wx + 16, wy + 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(wx + ww - 56, wy + 12, 12, 12);
+      ctx.fillStyle = '#f87171';
+      ctx.fillRect(wx + ww - 34, wy + 12, 12, 12);
 
-      const lines = [
-        '? CPU : AMD Ryzen 5 3600 (6 Cores / 12 Threads) - Nhi?t d?: 38�C [M�t m?]',
-        '?? GPU : NVIDIA GeForce RTX 3090 24GB GDDR6X - Driver v551.86 Ready',
-        '?? RAM : 16GB Dual-Channel G.SKILL Trident Z RGB @ 3200MHz',
-        '?? SSD : Samsung 860 EVO 500GB - T?c d? d?c: 550 MB/s',
-        '?? COOL: T?n nhi?t Cooler Master ho?t d?ng �m �i, RGB d?ng b? Aura Sync',
-        '?? PSU : Ngu?n MasterWatt 650W Bronze c?p d�ng di?n c?c k? ?n d?nh'
+      const rows = [
+        ['MOTHERBOARD', 'MSI MAG B550 Tomahawk - AM4 / DDR4'],
+        ['CPU', 'AMD Ryzen 5 3600 - 6C/12T - 38 C'],
+        ['RAM', '16 GB dual channel DDR4-3200'],
+        ['SSD', 'Samsung 860 EVO 500 GB - 550 MB/s'],
+        ['GPU', 'NVIDIA GeForce RTX 3090 - 24 GB'],
+        ['COOLER', 'tower cooler, airflow front to back'],
+        ['PSU', '650 W ATX, bronze']
       ];
-
-      lines.forEach((line, idx) => {
-        ctx.fillText(line, 170, 270 + idx * 34);
+      ctx.font = '17px "Segoe UI", sans-serif';
+      rows.forEach(([key, value], i) => {
+        const y = wy + 66 + i * 29;
+        ctx.fillStyle = '#7dd3fc';
+        ctx.textAlign = 'left';
+        ctx.fillText(key, wx + 22, y);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(value, wx + 186, y);
       });
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-      ctx.fillRect(0, h - 50, w, 50);
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 20px "Segoe UI", sans-serif';
-      ctx.fillText('?? PC Builder Menu', 30, h - 18);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('100% Ready � All Components Verified', w - 380, h - 18);
+      // taskbar
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.92)';
+      ctx.fillRect(0, h - 40, w, 40);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.beginPath();
+      ctx.roundRect(14, h - 34, 150, 28, 6);
+      ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '15px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Build Report', 26, h - 20);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('all systems nominal', w - 20, h - 20);
     }
-
-    this.monitorTexture.needsUpdate = true;
   }
 
   update(delta) {
@@ -703,7 +1031,8 @@ export class Room {
  * Build Zone can never drift apart.
  *
  * @param {object}  [options]
- * @param {boolean} [options.xray] 50% shell opacity for the transparent build view
+ * @param {boolean} [options.xray] build view: clearer glass, so the hardware
+ *   behind the tempered panel stays readable
  */
 export function createComputerCase3DGroup(options = {}) {
   const { xray = false } = options;
@@ -764,16 +1093,7 @@ export function createComputerCase3DGroup(options = {}) {
   const roofFanR = ROOF.fan.r;
 
   // ---------------------------------------------------------- materials
-  const shell = (params) => {
-    const mat = new THREE.MeshStandardMaterial(params);
-    if (xray) {
-      // X-ray shell: blended over the opaque interior, never occluding it
-      mat.transparent = true;
-      mat.opacity = 0.5;
-      mat.depthWrite = false;
-    }
-    return mat;
-  };
+  const shell = (params) => new THREE.MeshStandardMaterial(params);
 
   const steel = shell({ color: 0xf5f5f4, roughness: 0.42, metalness: 0.25 });
   const steelTwoSided = shell({ color: 0xf5f5f4, roughness: 0.42, metalness: 0.25 });
@@ -786,7 +1106,10 @@ export function createComputerCase3DGroup(options = {}) {
   const accent = shell({
     color: 0x38bdf8, emissive: 0x0d5f80, emissiveIntensity: 1.5, roughness: 0.4
   });
-  const glassMat = shell({
+  // The tempered panel is the one part of the chassis the builder has to handle,
+  // so it is NOT a build-shell material: it stays on screen (clear, at its own
+  // opacity) for the remove / refit steps.
+  const glassMat = new THREE.MeshStandardMaterial({
     color: 0x9fd8ff,
     transparent: true,
     opacity: xray ? 0.22 : 0.14,
@@ -824,13 +1147,7 @@ export function createComputerCase3DGroup(options = {}) {
       side: THREE.DoubleSide,
       roughness: 0.6,
       metalness: 0.55
-
     });
-    if (xray) {
-      mat.transparent = true;
-      mat.opacity = 0.5;
-      mat.depthWrite = false;
-    }
     return mat;
   };
 

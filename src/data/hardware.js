@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Hardware Components Database
  * Contains realistic technical specifications, tags, 3D model paths, educational notes,
  * real-world dimensions in metres, and crisp SVG icons for Inventory slots.
@@ -144,27 +144,6 @@ export const HARDWARE_ITEMS = [
     beginnerTip: '💡 Khi cắm 2 thanh RAM trên bo mạch chủ có 4 khe, hãy cắm vào khe 2 và khe 4 (khe DIMM A2 & B2) để kích hoạt chế độ Kênh Đôi (Dual-Channel) giúp tăng gấp đôi băng thông nhớ!'
   },
   {
-    id: 'ram_corsair_dominator',
-    name: 'Corsair Dominator Platinum RGB 16GB',
-    category: HARDWARE_CATEGORIES.RAM,
-    categoryKey: 'ram',
-    tag: 'RAM',
-    modelPath: '/models/RAM_model/corsair_dominator_rgb_ram.glb',
-    brand: 'Corsair',
-    price: '2,150,000 đ',
-    realSize: 0.1334,
-    footprint: { length: 0.1334, depth: 0.06 },
-    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-    </svg>`,
-    specs: [
-      { label: 'Dung lượng', value: '16GB DDR4' },
-      { label: 'Bus', value: '3600MHz' }
-    ],
-    description: 'Thanh RAM cao cấp tản nhiệt nhôm độc quyền.',
-    beginnerTip: '💡 Cắm chặt vào khe DIMM.'
-  },
-  {
     id: 'ram_gskill_tridentz_16gb_b',
     name: 'G.SKILL Trident Z RGB 16GB (2x8GB) DDR4 - Kit B',
     category: HARDWARE_CATEGORIES.RAM,
@@ -192,28 +171,6 @@ export const HARDWARE_ITEMS = [
     ],
     description: 'Kit RAM DDR4 thứ hai cùng series để ghép thành cặp kênh đôi hoàn chỉnh trong cùng một bộ máy.',
     beginnerTip: '💡 Nên dùng hai thanh cùng brand, cùng bus, cùng timing để kênh đôi chạy ổn định nhất.'
-  },
-  {
-    id: 'ram_corsair_dominator_b',
-    name: 'Corsair Dominator Platinum RGB 16GB - Kit B',
-    category: HARDWARE_CATEGORIES.RAM,
-    categoryKey: 'ram',
-    tag: 'RAM',
-    modelPath: '/models/RAM_model/corsair_dominator_rgb_ram.glb',
-    brand: 'Corsair',
-    price: '2,150,000 đ',
-    realSize: 0.1334,
-    footprint: { length: 0.1334, depth: 0.06 },
-    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="18" width="48" height="28" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-      <rect x="10" y="20" width="44" height="6" rx="2" fill="#fbbf24"/>
-    </svg>`,
-    specs: [
-      { label: 'Dung lượng', value: '16GB DDR4' },
-      { label: 'Bus', value: '3600MHz' }
-    ],
-    description: 'Kit RAM Corsair Dominator Platinum thứ hai, dành cho người muốn ghép cặp DIMM high-end.',
-    beginnerTip: '💡 Lắp vào khe DIMM A2 và B2 để kích hoạt kênh đôi.'
   },
   {
     id: 'ssd_samsung_860',
@@ -244,36 +201,6 @@ export const HARDWARE_ITEMS = [
     ],
     description: 'Ổ cứng SSD thể rắn huyền thoại từ Samsung đem lại độ bền bỉ phi thường, khởi động hệ điều hành và tải ứng dụng chỉ trong chớp mắt.',
     beginnerTip: '💡 Ổ cứng SSD không có bộ phận chuyển động cơ học nên chống sốc cực tốt và hoàn toàn im lặng. Kết nối cáp dữ liệu SATA từ ổ cứng vào bo mạch chủ và cáp nguồn từ PSU!'
-  },
-  {
-    id: 'psu_aerocool_650w',
-    name: 'Aerocool MasterWatt 650W 80 Plus Bronze',
-    category: HARDWARE_CATEGORIES.PSU,
-    categoryKey: 'psu',
-    tag: 'Power Supply',
-    modelPath: '/models/PSU_model/psu_power_supply_unit.glb',
-    brand: 'Cooler Master / Aerocool',
-    price: '1,590,000 đ',
-    realSize: 0.15,
-    footprint: { length: 0.15, depth: 0.15 },
-    iconSvg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="10" y="12" width="44" height="40" rx="4" fill="#0f172a" stroke="#f97316" stroke-width="2"/>
-      <circle cx="32" cy="32" r="14" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="3 3"/>
-      <circle cx="32" cy="32" r="4" fill="#f97316"/>
-      <rect x="14" y="16" width="6" height="4" fill="#ef4444"/>
-      <path d="M46 16v12M50 16v12" stroke="#fbbf24" stroke-width="1.5"/>
-    </svg>`,
-    specs: [
-      { label: 'Công suất thực định mức', value: '650 Watts liên tục' },
-      { label: 'Chứng nhận hiệu suất', value: '80 PLUS Bronze (Hiệu suất đạt > 85%)' },
-      { label: 'Dạng cáp nguồn', value: 'Semi-Modular (Cáp dẹt đen chống rối)' },
-      { label: 'Quạt làm mát', value: '120mm Silent LDB Fan điều tốc tự động' },
-      { label: 'Các chế độ bảo vệ', value: 'OVP, OPP, SCP, OCP, UVP, OTP' },
-      { label: 'Đầu cấp nguồn (Connectors)', value: '1x 24-Pin ATX, 1x 8-Pin CPU EPS, 2x 8-Pin PCIe, 6x SATA' },
-      { label: 'Đường điện 12V', value: 'Single Rail 12V 54A công suất tối đa' }
-    ],
-    description: 'Trái tim cấp năng lượng bền bỉ cho toàn bộ dàn máy với tụ điện thể rắn cao cấp chịu nhiệt 105°C và đường 12V Single Rail công suất cao.',
-    beginnerTip: '💡 Luôn lắp nguồn với quạt hút hướng xuống lưới lọc bụi dưới đáy thùng máy để hút không khí mát từ bên ngoài phòng vào làm mát linh kiện nguồn!'
   },
   {
     id: 'gpu_rtx_3090',

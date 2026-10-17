@@ -1,0 +1,29 @@
+Rotate the case on three axes in Build Mode
+
+A turntable group now sits between the pivot and caseRoot, so the chassis, every
+installed part, the ghost and the fasteners all turn together - nothing has to be
+re-seated as the machine swings round. The matrix is composed T(c)·R·T(-c),
+which collapses to identity at zero rotation, so at rest every existing
+measurement, camera frame and placement anchor keeps meaning exactly what it
+always meant.
+
+- RMB drag yaws and pitches, Shift + RMB drag rolls, Home squares the case up
+  again, and the scroll wheel keeps zooming (it is the last free zoom gesture).
+- The pivot is the chassis' own middle, measured from the built geometry rather
+  than CASE_BOUNDS. The bounds are published in layout axes (210 x 450) while
+  the chassis is built on the swapped pair (450 x 220) and turned by caseRoot,
+  so trusting them put the pivot 15 mm off and swung the case visibly.
+- The ghost is put away while the case is being turned - it would otherwise
+  slide across the interior chasing the cursor. Guarded in the scene itself as
+  well, and the pointer position is re-seated on release so the ghost does not
+  lurch back from wherever the drag started.
+- finalize() previously copied caseRoot's local transform into the machine,
+  which would have rotated and misplaced the finished PC the moment a parent
+  group existed. It now squares the turntable and decomposes caseRoot's world
+  transform, so the handed-over group is seated exactly.
+- dispose() detaches both caseRoot and the turntable.
+
+verify-caseturn.mjs: 15 checks covering identity-at-zero-rotation, independent
+axes, the 135-degree pitch/roll clamp, centre-pinned turning, hardware riding
+along and keeping its seat in each socket, the ghost surviving a turn,
+finalize seating, and dispose. All earlier suites still pass unchanged.

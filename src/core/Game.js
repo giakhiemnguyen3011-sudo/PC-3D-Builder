@@ -313,7 +313,61 @@ export class Game {
       child.userData = { ...tag };
     });
 
-    this.showToast('🎉 Máy tính của bạn đã sẵn sàng! Cầm lên và xoay thoải mái nhé.');
+    // The machine leaves Build Mode un-wired on purpose: the player hooks it up
+    // to the monitor here, on the bench, by clicking the card's port and then
+    // the monitor's HDMI port.
+    this.room.addVideoPortToMachine(group);
+    this.cableTask = { armed: false, connected: false, timer: null };
+    this.room.setCableTaskArmed(false, false);
+
+    this.showToast('🎉 Máy tính của bạn đã sẵn sàng! Bấm vào cổng video phía sau thùng máy để nối sang màn hình.');
+    this.markWorldChanged();
+  }
+
+  /**
+   * The wiring step, outside Build Mode.
+   *
+   * Two clicks, in this order: the case's video port, then the monitor's HDMI
+   * port. Only then does the machine boot - the monitor goes NO_SIGNAL, runs
+   * POST and lands on the desktop.
+   */
+  handleCableClick(kind) {
+    if (this.cableTask?.connected) {
+      this.showToast('Cáp đã nối rồi. Bấm nút nguồn trên thùng hoặc chờ máy khởi động.');
+      return;
+    }
+    if (!this.room.machinePort) {
+      this.showToast('Chưa có máy nào trên bàn để nối cáp.');
+      return;
+    }
+
+    if (kind === 'pc') {
+      this.cableTask.armed = true;
+      this.room.setCableTaskArmed(true, false);
+      sounds.playSnap();
+      this.showToast('Đã cắm cáp vào card đồ họa. Giờ bấm vào cổng HDMI trên màn hình.');
+      this.markWorldChanged();
+      return;
+    }
+
+    if (kind !== 'monitor') return;
+    if (!this.cableTask.armed) {
+      this.showToast('Bấm vào cổng video phía sau thùng máy trước đã.');
+      return;
+    }
+
+    this.cableTask.armed = false;
+    this.cableTask.connected = true;
+    this.room.setCableTaskArmed(false, true);
+    this.room.connectCable();
+    sounds.playSnap();
+    this.showToast('🔌 Đã nối HDMI. Máy tính đang khởi động...');
+    this.room.setMonitorState('NO_SIGNAL');
+    if (this.cableTask.timer) clearTimeout(this.cableTask.timer);
+    this.cableTask.timer = setTimeout(() => {
+      this.room.postProgress = 0;
+      this.room.setMonitorState('POST');
+    }, 900);
     this.markWorldChanged();
   }
 
@@ -333,6 +387,9 @@ export class Game {
     group.rotation.set(pose.x || 0, pose.y ?? pc.home.yaw, pose.z || 0);
     group.updateMatrixWorld(true);
     this.assembledPC = pc;
+    // back on the bench: the port is clickable again, though the cable stays off
+    // until the player plugs it in again
+    this.room.registerMachinePort(this.room.machinePort);
     this.markWorldChanged();
   }
 
@@ -391,13 +448,31 @@ export class Game {
     // CASE B: PLAYER'S HAND IS EMPTY (OR SWAPPING)
     // ==========================================
 
-    // 0. The finished machine: pick it up, swap it out
+    // 0. The wiring: the case's video port and the monitor's HDMI port
+    if (uData.type === 'pcVideoPort') {
+      this.handleCableClick('pc');
+      return;
+    }
+    if (uData.type === 'monitorPort') {
+      this.handleCableClick('monitor');
+      return;
+    }
+
+    // 1. The finished machine: pick it up, swap it out
     if (uData.type === 'assembledPC') {
       const prev = this.assembledPC;
       if (!prev) return;
       this.assembledPC = null;
       prev.prebuilt.visible = false;
       if (prev.prebuilt.parent) prev.prebuilt.parent.remove(prev.prebuilt);
+      // the cable and the port come with the machine, so both come off the bench
+      this.room.removeCable();
+      this.room.unregisterMachinePort();
+      this.room.setMonitorState('OFF');
+      if (this.cableTask) {
+        if (this.cableTask.timer) clearTimeout(this.cableTask.timer);
+        this.cableTask = { armed: false, connected: false, timer: null };
+      }
       this.heldItemManager.holdItem(prev);
       this.markWorldChanged();
       return;

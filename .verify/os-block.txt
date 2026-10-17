@@ -1,0 +1,99 @@
+} else if (this.monitorState === 'OS') {
+      // Desktop: wallpaper, a build-report window and a taskbar, so the panel
+      // reads as a machine that came up rather than a splash card.
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, '#0b1220');
+      bg.addColorStop(0.55, '#152a45');
+      bg.addColorStop(1, '#0f766e');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(148, 197, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 48) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 48) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // top bar
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.82)';
+      ctx.fillRect(0, 0, w, 34);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '600 17px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PC BUILDER OS', 18, 18);
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'right';
+      ctx.fillText('build complete', w - 18, 18);
+
+      // report window
+      const wx = 96;
+      const wy = 58;
+      const ww = w - 192;
+      const wh = h - 124;
+      ctx.fillStyle = 'rgba(10, 18, 32, 0.93)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(wx, wy, ww, wh, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      // window title bar
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.beginPath();
+      ctx.roundRect(wx, wy, ww, 34, 10);
+      ctx.fill();
+      ctx.fillStyle = '#e0f2fe';
+      ctx.font = '600 16px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('build-report.txt', wx + 16, wy + 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(wx + ww - 56, wy + 12, 12, 12);
+      ctx.fillStyle = '#f87171';
+      ctx.fillRect(wx + ww - 34, wy + 12, 12, 12);
+
+      const rows = [
+        ['MOTHERBOARD', 'MSI MAG B550 Tomahawk - AM4 / DDR4'],
+        ['CPU', 'AMD Ryzen 5 3600 - 6C/12T - 38 C'],
+        ['RAM', '16 GB dual channel DDR4-3200'],
+        ['SSD', 'Samsung 860 EVO 500 GB - 550 MB/s'],
+        ['GPU', 'NVIDIA GeForce RTX 3090 - 24 GB'],
+        ['COOLER', 'tower cooler, airflow front to back'],
+        ['PSU', '650 W ATX, bronze']
+      ];
+      ctx.font = '17px "Segoe UI", sans-serif';
+      rows.forEach(([key, value], i) => {
+        const y = wy + 66 + i * 29;
+        ctx.fillStyle = '#7dd3fc';
+        ctx.textAlign = 'left';
+        ctx.fillText(key, wx + 22, y);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(value, wx + 186, y);
+      });
+
+      // taskbar
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.92)';
+      ctx.fillRect(0, h - 40, w, 40);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.beginPath();
+      ctx.roundRect(14, h - 34, 150, 28, 6);
+      ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '15px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Build Report', 26, h - 20);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('all systems nominal', w - 20, h - 20);
+    }

@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { loadModelCopy } from './ModelCache.js';
-import { realDimsFor } from '../data/hardwareDims.js';
-import { buildFittedModel } from './ModelFit.js';
+import { buildFittedModel, fitOptionsFor } from './ModelFit.js';
 import { createComputerCase3DGroup } from './Room.js';
 import { CASE, CASE_REF, CASE_ZONES, CASE_BOUNDS, mountQuaternion } from './caseLayout.js';
 
@@ -63,8 +62,6 @@ export class BuildScene {
     this.powered = false;
     this._lastFocusZone = null;
     this.zoom = 1;
-    this.screwHolders = [];   // tracked, so we never traverse the scene per frame
-    this.cableHolders = [];
     this.pivot = new THREE.Group();
     this.scene.add(this.pivot);
 
@@ -151,6 +148,17 @@ export class BuildScene {
     this.snapCamera();
   }
 
+  /**
+   /**
+   * Snap-target boxes, one per zone.
+   *
+   * These are the hardware placeholders - the "grid spots" the builder aims at -
+   * and they are deliberately NOT drawn: as translucent white slabs they sat
+   * over the parts they were introducing. They stay in the graph because
+   * `isOverZone` projects their centre and extent to work out the snap, so
+   * placing a part behaves exactly as before, there is simply nothing white
+   * floating in the chassis any more. The step hint in the HUD names the zone.
+   */
   buildZoneMarkers() {
     const geo = new THREE.BoxGeometry(1, 1, 1);
     Object.entries(CASE_ZONES).forEach(([id, zone]) => {
@@ -169,6 +177,7 @@ export class BuildScene {
       mesh.visible = false;
       mesh.renderOrder = 5;
       mesh.userData.zoneId = id;
+      mesh.userData.placeholder = true;
       this.caseRoot.add(mesh);
       this.zoneMeshes.set(id, mesh);
       this.zoneList.push(mesh);
@@ -477,6 +486,25 @@ export class BuildScene {
   }
 
   /**
+   * Where the next part for `zoneId` goes.
+   *
+   * Most zones hold one part, so this is just the zone anchor. A zone with
+   * several seats - the DIMM bank is four slots wide - lists them in `slots`
+   * and each part seated takes the next free one, which is how two sticks end
+   * up in A2 and B2 instead of stacked in the same place.
+   */
+  zoneAnchorFor(zoneId) {
+    const zone = CASE_ZONES[zoneId];
+    if (!zone) return null;
+    if (!zone.slots || !zone.slots.length) return zone.anchor;
+    let used = 0;
+    for (const entry of this.placedParts.values()) {
+      if (entry.zoneId === zoneId) used++;
+    }
+    return zone.slots[Math.min(used, zone.slots.length - 1)];
+  }
+
+  /**
    * Puts the ghost in its mount orientation for `zoneId` and measures where the
    * part's centre and extents land in case-local space. Cached per zone so a
    * pointer move never walks the model's bounding box.
@@ -513,8 +541,8 @@ export class BuildScene {
    * Ghost tracks the cursor, magnetised onto the target zone when close.
    *
    * `armed` is false for steps the cursor is not carrying a part through -
-   * tightening fasteners, spreading paste, pressing a part down, clicking a cable
-   * or the power button. Without it the part would swim around the canvas during
+   * tightening fasteners, spreading paste, pressing a part down or flipping the
+   * power switch. Without it the part would swim around the canvas during
    * those clicks, which is what made it look like it had escaped the case.
    */
   updateGhost(zoneId, armed = true) {
@@ -533,6 +561,7 @@ export class BuildScene {
     const zone = CASE_ZONES[zoneId];
     const snap = this.isOverZone(zoneId);
     this.ghost.group.visible = true;
+    const anchor = this.zoneAnchorFor(zoneId) || zone.anchor;
 
     // Orient the preview exactly as it will be seated, so the player reads the
     // part the right way up from whatever camera angle they are at. The offset
@@ -541,13 +570,13 @@ export class BuildScene {
     this._applyGhostMount(zoneId, zone);
 
     if (snap) {
-      this.ghost.group.position.set(...zone.anchor).sub(this.ghost.centreOffset);
+      this.ghost.group.position.set(...anchor).sub(this.ghost.centreOffset);
       this.ghost.zoneId = zoneId;
       this.setZoneState(zoneId, 'active');
     } else {
       this.ghost.group.position.copy(point);
       // slight pull so the player feels the magnet without it teleporting
-      this.ghost.group.position.lerp(this._v1.fromArray(zone.anchor), 0.16);
+      this.ghost.group.position.lerp(this._v1.fromArray(anchor), 0.16);
       this.ghost.zoneId = null;
       this.setZoneState(zoneId, 'hint');
     }
@@ -612,18 +641,17 @@ export class BuildScene {
 
   // ----------------------------------------------------------------- zones
   setZoneState(zoneId, state) {
+    // Nothing is drawn: these boxes are snap maths, not furniture. The colour is
+    // still tracked so the state is inspectable, but `visible` stays false - a
+    // white translucent slab over the hardware is exactly what the builder asked
+    // to be rid of.
     Object.entries(this.zoneMeshes).forEach(([id, mesh]) => {
       const locked = this.lockedZone === id;
       const isThis = id === zoneId;
       mesh.material.color.setHex(
         locked ? ZONE_TINT.locked : isThis ? ZONE_TINT[state] : 0xffffff
       );
-      // Only the step currently being worked shows its serve line. Placing a
-      // part locks its zone (step `placePart` sets `lockedZone` and calls this
-      // with 'locked'), so the highlight must disappear once the part has gone
-      // down. Otherwise every filled zone stayed overlaid on top of the real
-      // hardware and washed out the view.
-      mesh.visible = isThis && state !== 'locked' && this.lockedZone !== id;
+      mesh.visible = false;
     });
   }
 
@@ -789,67 +817,6 @@ export class BuildScene {
     return 'tightened';
   }
 
-  // ---------------------------------------------------------- cable ports
-  /**
-   * Step 9 has no part to drag, so the connectors themselves become the targets.
-   * They are drawn as orange headers and click one by one.
-   */
-  showCableTargets(targets, zoneId) {
-    this.hideCableTargets();
-    const zone = CASE_ZONES[zoneId];
-    if (!zone || !targets.length) return;
-
-    const group = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0xf97316, emissive: 0x7c2d12, emissiveIntensity: 1.5,
-      roughness: 0.4, metalness: 0.3
-    });
-    const haloMat = new THREE.MeshBasicMaterial({
-      color: 0xfb923c, transparent: true, opacity: 0.45, depthWrite: false
-    });
-    const bodyGeo = new THREE.BoxGeometry(0.014, 0.011, 0.022);
-    const ringGeo = new THREE.TorusGeometry(0.015, 0.0018, 6, 20);
-
-    targets.forEach(target => {
-      const holder = new THREE.Group();
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      const ring = new THREE.Mesh(ringGeo, haloMat);
-      ring.rotation.y = Math.PI / 2;
-      holder.add(body, ring);
-      holder.position.set(
-        zone.anchor[0] + target.offset[0],
-        zone.anchor[1] + target.offset[1],
-        zone.anchor[2] + target.offset[2]
-      );
-      holder.userData.cableId = target.id;
-      group.add(holder);
-      this.cableHolders.push(holder);
-    });
-
-    this.caseRoot.add(group);
-    this.cableGroup = group;
-  }
-
-  markCableDone(cableId) {
-    if (!this.cableGroup) return;
-    this.cableGroup.children.forEach(holder => {
-      if (holder.userData.cableId !== cableId) return;
-      holder.userData.done = true;
-      holder.children.forEach(child => {
-        if (child.material && child.material.color) {
-          child.material.color.setHex(0x22c55e);
-          if (child.material.emissive) child.material.emissive.setHex(0x14532d);
-        }
-      });
-    });
-  }
-
-  hideCableTargets() {
-    if (this.cableGroup) this.caseRoot.remove(this.cableGroup);
-    this.cableGroup = null;
-    this.cableHolders = [];
-  }
-
   // -------------------------------------------------------------- placing
   /**
    * Seat a part for good. It is rotated into the zone's mount orientation so it
@@ -866,7 +833,7 @@ export class BuildScene {
 
       const holder = new THREE.Group();
       holder.add(fitted);
-      this._centreOnAnchor(holder, zone.anchor);
+      this._centreOnAnchor(holder, this.zoneAnchorFor(zoneId));
       this.caseRoot.add(holder);
 
       this.placedParts.set(partKey, { item, zoneId, group: holder });
@@ -884,11 +851,7 @@ export class BuildScene {
         console.warn(`Build zone could not load ${item.name}`);
         return null;
       }
-      const { group } = buildFittedModel(copy, {
-        realSize: item.realSize,
-        realDims: realDimsFor(item),
-        flat: true
-      });
+      const { group } = buildFittedModel(copy, fitOptionsFor(item));
       return group;
     });
   }
@@ -952,13 +915,11 @@ export class BuildScene {
   }
 
   /**
-   * Per-frame work is deliberately allocation free. Zone markers, fastener
-   * handles and cable handles are tracked in plain arrays, so animating a
-   * handful of screws never walks the 120+ case meshes twice a frame.
+   * Per-frame work is deliberately allocation free. Zone markers and fastener
+   * handles are tracked in plain arrays, so animating a handful of screws never
+   * walks the 120+ case meshes twice a frame.
    */
   update(delta, now) {
-    this.resize();
-
     if (Math.abs(this.glassT - this.glassGoal) > 0.001) {
       this.glassT += (this.glassGoal - this.glassT) * Math.min(1, delta * 6);
       this.applyGlass();
@@ -1010,12 +971,6 @@ export class BuildScene {
       this.powerLight.intensity = 1.1 + Math.sin(now * 0.004) * 0.3;
     }
 
-    // Unplugged cable headers pulse so they read as the thing to click
-    for (let i = 0; i < this.cableHolders.length; i++) {
-      const holder = this.cableHolders[i];
-      if (holder.userData.done) continue;
-      holder.children[1]?.scale.setScalar(1 + Math.sin(now * 0.006 + i) * 0.12);
-    }
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -1026,7 +981,6 @@ export class BuildScene {
    */
   finalize() {
     this.hideScrews();
-    this.hideCableTargets();
     this.clearZoneStates();
     this.clearGhost();
     this.setGlass(true, true);
@@ -1050,12 +1004,7 @@ export class BuildScene {
     caseClone.scale.copy(this.caseGroup.scale);
     caseClone.traverse(o => {
       if (!o.isMesh) return;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach(m => {
-        if (!m) return;
-        // a finished chassis is a real object again, not a ghost
-        if (m.opacity >= 0.9) { m.transparent = false; m.depthWrite = true; }
-      });
+      // a finished chassis is a real object again: solid panels, shadow casting
       o.castShadow = true;
       o.receiveShadow = true;
     });
@@ -1086,7 +1035,6 @@ export class BuildScene {
     this.clearGhost();
     this.clearParts();
     this.hideScrews();
-    this.hideCableTargets();
     if (this.caseRoot) this.pivot.remove(this.caseRoot);
 
     this.renderer.dispose();

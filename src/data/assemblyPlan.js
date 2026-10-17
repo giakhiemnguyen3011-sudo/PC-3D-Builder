@@ -1,5 +1,11 @@
 /**
- * The 10 steps of building a PC, in the order a technician would actually do them.
+ * The 9 steps of building a PC, in the order a technician would actually do them.
+ *
+ * Wiring is deliberately NOT one of them: the machine leaves Build Mode with the
+ * panel back on and the cables still out, and the player hooks it up to the
+ * monitor on the bench (click the case's video port, then the monitor's HDMI
+ * port). That is where a real builder does it, and it is the last thing the
+ * room needs before it will boot.
  *
  * Each step declares:
  *   zone     - the Build Zone snap target in caseLayout.js
@@ -11,9 +17,6 @@
  *                        because a notched tray really does have fewer standoffs)
  *              'paste'   apply thermal paste, then screw the cooler down
  *              'seat'    press the part home / close the retention latch
- *              'cable'   route the power cables
- *              'display' plug the monitor cable into the graphics card
- *              'power'   press the power button
  */
 export const ASSEMBLY_STEPS = [
   {
@@ -23,7 +26,7 @@ export const ASSEMBLY_STEPS = [
     shortName: 'Tháo nắp kính cường lực',
     title: 'Bước 1 · Tháo nắp kính cường lực',
     instruction:
-      'Nới 4 núm vặn ở góc rồi kéo nắp kính ra khỏi thùng. Thùng máy đang hiển thị ở chế độ trong suốt 50% để bạn nhìn thấy toàn bộ ruột thùng.',
+      'Nới 4 núm vặn ở góc rồi kéo nắp kính ra khỏi thùng. Nhìn qua nắp kính bạn thấy toàn bộ ruột thùng — hãy tháo nó ra trước khi lắp linh kiện.',
     tip: 'Bấm nút THÁO NẮP KÍNH, hoặc bấm trực tiếp vào tấm kính bên trong khung Build Zone.',
     accepts: [],
     need: 0
@@ -121,25 +124,12 @@ export const ASSEMBLY_STEPS = [
   },
   {
     step: 9,
-    zone: 'cables',
-    action: 'cable',
-    accepts: [],
-    need: 0,
-    shortName: 'Cắm hệ thống dây nguồn',
-    title: 'Bước 9 · Cắm dây nguồn',
-    instruction:
-      'Cắm cáp 24-pin ATX vào cạnh bo mạch chủ, cáp 8-pin CPU ở góc trên cùng, cáp 8-pin PCIe vào đầu card đồ họa và cáp SATA vào ổ cứng.',
-    tip: 'Khay ghim dây (grommet) cao su ở mép khay bo mạch giúp luồn cáp gọn gàng thay vì kẹp ngang qua linh kiện.',
-    shortHint: '24-pin + 8-pin CPU + 8-pin PCIe + SATA'
-  },
-  {
-    step: 10,
     zone: 'glass',
     action: 'glass',
     accepts: [],
     need: 0,
     shortName: 'Đóng nắp kính bảo vệ',
-    title: 'Bước 10 · Đóng nắp kính',
+    title: 'Bước 9 · Đóng nắp kính',
     instruction:
       'Đặt nắp kính cường lực lại đúng vị trí rồi siết 4 núm vặn ở góc để chốt chặt.',
     tip: 'Kiểm tra không còn khe hở giữa kính và khung thùng trước khi bật nguồn.',

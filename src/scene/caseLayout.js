@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { HARDWARE_REAL_DIMS } from '../data/hardwareDims.js';
 
 /**
  * Single source of truth for the procedural ATX mid-tower.
@@ -51,10 +52,14 @@ export const BOARD = {
 };
 
 // -------------------------------------------------------------------- tray
-// The tray sits far enough behind the glass for a ~150mm tower cooler, which
-// leaves the slim cable channel every real case has behind the board.
+// The tray is pushed well back against the plain steel side. A tower cooler
+// stands OFF the board along that axis - its base on the CPU and the fin stack
+// reaching out towards the glass - so the gap between the copper and the pane is
+// what decides whether a 155 mm cooler fits at all. From here it clears it by
+// about 4 mm, and what is left behind the board is the slim cable channel every
+// real case has.
 export const TRAY = {
-  x: -0.05,
+  x: -0.075,
   thickness: 0.008,
   get face() { return this.x + this.thickness / 2; },   // board mounting face
   get back() { return this.x - this.thickness / 2; },
@@ -73,6 +78,80 @@ export const TRAY = {
   get cutY1() { return this.cutY + this.cutSize / 2; },
   get cutZ0() { return this.cutZ - this.cutSize / 2; },
   get cutZ1() { return this.cutZ + this.cutSize / 2; }
+};
+
+// -------------------------------------------- what the ATX board offers
+// The build zone supports one motherboard - the MSI B550 Tomahawk, a full ATX
+// board (305 x 244 mm). The zones are placed against the board's *own* printed
+// features, measured off the shipped model rather than guessed, so a CPU really
+// lands on the socket you can see on the board instead of hovering in front of
+// it.
+//
+// Those measurements are in the fitted model's own frame: X runs 305 mm up the
+// board, Y is the 45 mm stack that sits on the copper, Z is the 244 mm depth.
+// Mounted (see the motherboard zone) X becomes case -Y, Y becomes case +X and
+// Z becomes case +Z. Because the board is centred on its own stack and rests on
+// the tray, all of that collapses to one rule: caseX = TRAY.face + the height
+// above the copper.
+const boardThickness = HARDWARE_REAL_DIMS.motherboard.height;
+/** The board is balanced on its 45 mm stack, so its PCB lands on the tray. */
+const boardCentreX = TRAY.face + boardThickness / 2;
+const boardCentreY = (boardTop + (boardTop - boardHeight)) / 2;
+const boardCentreZ = boardZ0 + boardLength / 2;
+const cpuHeight = HARDWARE_REAL_DIMS.cpu.height;
+const ramThickness = HARDWARE_REAL_DIMS.ram.height;
+const ramLength = HARDWARE_REAL_DIMS.ram.length;
+const gpuThickness = HARDWARE_REAL_DIMS.gpu.height;
+
+// heights above the copper, read off motherboard_am4.glb
+const BOARD_PCB = 0.0015;        // the copper surface itself
+const SOCKET_STANDOFF = 0.0081;  // the AM4 socket frame, 6.6 mm proud of it
+const DIMM_SOCKET = 0.0155;      // the DIMM slot bodies, 14 mm proud
+const PCIE_SOCKET = 0.0145;      // the PCIe x16 slot body
+// and positions along the board, fitted X (negative = below centre) and fitted Z
+const SOCKET_UP = -0.0485;       // 104 mm below the board's top edge
+const SOCKET_BACK = -0.0217;     // 100 mm in from the rear edge
+const DIMM_UP = -0.0497;         // level with the socket, as on a real board
+
+/** The board's copper, facing the glass: what a clip-on part actually rests on. */
+export const BOARD_SURFACE_X = TRAY.face + BOARD_PCB;
+
+/**
+ * The AM4 socket, measured on the board model: 104 mm below the top edge,
+ * 100 mm in from the rear, its frame standing 6.6 mm off the copper.
+ */
+export const SOCKET = {
+  x: TRAY.face + SOCKET_STANDOFF + cpuHeight / 2,
+  y: boardCentreY - SOCKET_UP,
+  z: boardCentreZ + SOCKET_BACK
+};
+
+/**
+ * The DIMM bank. The sticks stand 133 mm tall in their slots, level with the
+ * socket, and step sideways one slot pitch apart; A2 + B2 is the dual-channel
+ * pair the plan asks for.
+ *
+ * Along the board's depth the bank is anchored just forward of the tower cooler
+ * rather than on the two slots this model prints, which sit 55 mm *behind* its
+ * socket - a tower cooler's 110 mm body would swallow them there. Height and
+ * standoff are the measured ones.
+ */
+const dimmPitch = 0.0095;
+const dimmCentreY = boardCentreY - DIMM_UP;
+const dimmX = TRAY.face + DIMM_SOCKET + HARDWARE_REAL_DIMS.ram.width / 2;
+const dimmSlotZ = BOARD.z1 - 0.067;
+export const RAM_SLOTS = {
+  a1: [dimmX, dimmCentreY, dimmSlotZ],
+  a2: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch],
+  b1: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch * 2],
+  b2: [dimmX, dimmCentreY, dimmSlotZ + dimmPitch * 3]
+};
+/** Slot heights across the bank, used for the highlight box. */
+export const RAM_SLOT_SPAN = {
+  y0: dimmCentreY - ramLength / 2,
+  y1: dimmCentreY + ramLength / 2,
+  z0: dimmSlotZ - ramThickness / 2,
+  z1: RAM_SLOTS.b2[2] + ramThickness / 2
 };
 
 // ------------------------------------------------------------ PSU shroud
@@ -156,8 +235,6 @@ export const ATX_STANDOFFS_ACTIVE = ATX_STANDOFFS.filter(s => trayHas(s.y, s.z))
  *               so fasteners land where a real builder would put them, on the
  *               same side as the part's own mounting face.
  */
-const boardCentreY = (boardTop + (boardTop - boardHeight)) / 2;
-const boardCentreZ = boardZ0 + boardLength / 2;
 
 export const CASE_ZONES = {
   glass: {
@@ -172,13 +249,14 @@ export const CASE_ZONES = {
   },
   motherboard: {
     label: 'Vị trí bo mạch chủ ATX',
-    anchor: [TRAY.face + 0.002, boardCentreY, boardCentreZ],
+    anchor: [boardCentreX, boardCentreY, boardCentreZ],
     size: [0.006, boardHeight, boardLength],
-    // Same ATX fit as authored: 305mm runs vertically in the tray, the 45mm
-    // thickness faces the glass. The long edge maps to -Y (not +Y) so the board
-    // is carried 180°-flipped in its own spot, which puts the printed CPU
-    // socket at the heated region (the cpu anchor's tray cutout) rather than
-    // mirrored onto the opposite corner.
+    // Same ATX fit as authored: 305mm runs vertically in the tray and the 45mm
+    // component stack faces the glass, so the board's copper rests on the tray
+    // face. The long edge maps to -Y so the board is carried flipped in its own
+    // spot: that is the pose the printed socket lands in the upper half of the
+    // tray, level with the DIMM bank and with the PCIe slot below both. The
+    // anchors above are read off the model in that pose.
     mount: { long: [0, -1, 0], thin: [1, 0, 0] },
     face: [1, 0, 0],
     faceLift: 0.014,
@@ -189,7 +267,9 @@ export const CASE_ZONES = {
   },
   cpu: {
     label: 'Socket CPU',
-    anchor: [TRAY.face + 0.003, TRAY.cutY, TRAY.cutZ],
+    // on the socket the board model actually prints, its heatspreader resting
+    // on the socket frame rather than floating in front of the board
+    anchor: [SOCKET.x, SOCKET.y, SOCKET.z],
     size: [0.01, 0.042, 0.042],
     // flat against the board, heatspreader facing the glass
     mount: { long: [0, 1, 0], thin: [1, 0, 0] },
@@ -199,23 +279,56 @@ export const CASE_ZONES = {
   },
   cooler: {
     label: 'Tản nhiệt khí trên socket',
-    anchor: [TRAY.face + 0.072, TRAY.cutY + 0.015, TRAY.cutZ],
-    size: [0.14, 0.16, 0.12],
-    // tower stands tall, fan turned towards the glass so it reads clearly
-    mount: { long: [0, 1, 0], thin: [0, 0, 1] },
+    // The cooler stands off the board on the socket's normal: its base block
+    // lands on the CPU and the fin stack reaches out towards the glass, which is
+    // what every model in public/models is actually shaped like (measured: the
+    // cpu plate sits at the -X end of the fitted part in all three). It used to
+    // be mounted with that axis vertical, so the base pointed at the floor and
+    // nothing lined up with the CPU.
+    //   long -> +X   the base-to-fin-stack axis: base on the CPU, fins to the glass
+    //   thin -> -Z   cross() then sends the fan axis to +Y, so the fan faces up
+    anchor: [
+      Math.min(
+        SOCKET.x + cpuHeight / 2 + HARDWARE_REAL_DIMS.cooler.length / 2,
+        CASE_REF.xGlassInner - HARDWARE_REAL_DIMS.cooler.length / 2 - 0.002
+      ),
+      SOCKET.y,
+      SOCKET.z
+    ],
+    size: [
+      HARDWARE_REAL_DIMS.cooler.length,
+      HARDWARE_REAL_DIMS.cooler.width,
+      HARDWARE_REAL_DIMS.cooler.height
+    ],
+    // fin stack reaching to the glass, fan on its upper face blowing up
+    mount: { long: [1, 0, 0], thin: [0, 0, -1] },
     face: [1, 0, 0],
-    faceLift: 0.15,
+    // the spring screws are reached from the far side, past the fin stack
+    faceLift: HARDWARE_REAL_DIMS.cooler.length + 0.004,
     screws: 4,
-    // spring-loaded mounting post at each corner, tightened in an X
-    screwPts: [[-0.033, -0.033], [-0.033, 0.033], [0.033, -0.033], [0.033, 0.033]]
+    // the four spring posts around the cold plate
+    screwPts: [[-0.02, -0.022], [0.02, -0.022], [0.02, 0.022], [-0.02, 0.022]]
   },
   ram: {
     label: 'Khe RAM DDR4 (cắm khe 2 & 4)',
-    anchor: [TRAY.face + 0.008, BOARD.bottom + 0.1, BOARD.z1 - 0.045],
-    size: [0.014, 0.05, 0.132],
-    // DIMM stands in its slot, long edge running along the slot (front to back),
-    // thin edge towards the glass, and its 45mm width standing upright
-    mount: { long: [0, 0, 1], thin: [1, 0, 0] },
+    // the anchor is the middle of the DIMM bank - that is where the highlight
+    // box belongs - while `slots` gives each stick its own seat
+    anchor: [
+      dimmX,
+      dimmCentreY,
+      (RAM_SLOT_SPAN.z0 + RAM_SLOT_SPAN.z1) / 2
+    ],
+    // dual-channel pair first, so two sticks land in A2 and B2
+    slots: [RAM_SLOTS.a2, RAM_SLOTS.b2],
+    size: [
+      HARDWARE_REAL_DIMS.ram.width,
+      RAM_SLOT_SPAN.y1 - RAM_SLOT_SPAN.y0,
+      RAM_SLOT_SPAN.z1 - RAM_SLOT_SPAN.z0
+    ],
+    // The stick stands in its slot: 133mm long edge straight up the board,
+    // the 45mm heat spreader out towards the glass, and the 7mm PCB edge-on
+    // to the side - which is how you actually read a DIMM through a side panel.
+    mount: { long: [0, 1, 0], thin: [0, 0, 1] },
     face: [1, 0, 0],
     faceLift: 0.012,
     screws: 0
@@ -246,8 +359,13 @@ export const CASE_ZONES = {
   },
   gpu: {
     label: 'Khe PCIe x16',
-    // 313mm card hangs from the rear slots, so its centre sits forward of centre
-    anchor: [TRAY.face + 0.062, REAR.slots.top - 0.009, BOARD.z0 + 0.157],
+    // 313mm card hangs from the rear slots: its edge connector goes into the
+    // slot the board prints, and its top edge clears the bottom of the DIMMs
+    anchor: [
+      TRAY.face + PCIE_SOCKET + gpuThickness / 2,
+      RAM_SLOT_SPAN.y0 - 0.006 - HARDWARE_REAL_DIMS.gpu.width / 2,
+      BOARD.z0 + 0.157
+    ],
     size: [0.112, 0.05, 0.313],
     // card hangs nose-forward: its 313mm length runs into the case, the 52mm
     // body thickness faces the glass, and the 130mm height stands upright with

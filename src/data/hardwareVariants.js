@@ -5,8 +5,9 @@
  * catalogue in hardware.js does not use yet.
  *
  * The assembly plan accepts parts by `tag`, not by id, so these all drop into
- * the existing 12 steps and give the player a real choice at each slot: any
- * ATX board, any IHS-sized CPU, any tower cooler, any DDR4 DIMM, and so on.
+ * the existing steps and give the player a real choice at each slot: the one
+ * AM4 board the build zone is laid out for, any IHS-sized CPU, any tower
+ * cooler, any DDR4 DIMM, and so on.
  *
  * Sizing contract is identical to hardware.js: `realSize` is the longest real
  * edge in metres and `footprint` reserves bench space for the part. Every part
@@ -104,28 +105,6 @@ export const HARDWARE_VARIANTS = [
     ],
     description: 'Bo mạch AM4 phổ thông cho dòng Ryzen, nền tảng dễ nâng cấp lên thế hệ Zen 3.',
     beginnerTip: '💡 Board AM4 chỉ nhận CPU kiểu AM4. Kiểm tra khe RAM DDR4 (không phải DDR5) trước khi mua CPU.'
-  },
-  {
-    id: 'mb_gigabyte_h61',
-    name: 'Gigabyte H61M-HD3',
-    category: HARDWARE_CATEGORIES.MOTHERBOARD,
-    categoryKey: 'motherboard',
-    tag: 'Motherboard',
-    modelPath: '/models/Motherboard_model/motherbard.glb',
-    brand: 'Gigabyte',
-    price: '1,190,000 đ',
-    realSize: 0.244,
-    footprint: { length: 0.244, depth: 0.244 },
-    iconSvg: ICON('motherboard'),
-    specs: [
-      { label: 'Socket', value: 'LGA 1155 (Intel 2nd Gen)' },
-      { label: 'Chipset', value: 'Intel H61' },
-      { label: 'Kích thước Form Factor', value: 'Micro-ATX (24.4 cm x 24.4 cm)' },
-      { label: 'Khe RAM', value: '2x DDR3 DIMM' },
-      { label: 'Cổng M.2 & SATA', value: '0x M.2, 4x SATA II' }
-    ],
-    description: 'Bo mATX thế hệ cũ dùng DDR3, chạy ổn cho dàn máy văn phòng tiết kiệm điện.',
-    beginnerTip: '💡 Board DDR3 không tương thích với RAM DDR4. Luôn kiểm tra thế hệ RAM trước khi nâng cấp máy.'
   },
 
   // -------------------------------------------------------------------- CPUs
@@ -263,6 +242,8 @@ export const HARDWARE_VARIANTS = [
   },
 
   // -------------------------------------------------------------------- RAM
+  // Every kit is listed twice, the way it is sold: one stick to look at, and a
+  // second so step 5 (two DIMMs, dual channel) always has a pair on the bench.
   {
     id: 'ram_kingston_fury_black',
     name: 'Kingston FURY Beast DDR4 16GB',
@@ -285,6 +266,26 @@ export const HARDWARE_VARIANTS = [
     beginnerTip: '💡 Khoảnh khắc mở giữa hai cắt khía trên module là vị trí chống lắp ngược - luôn cắm cho khớp lẹm.'
   },
   {
+    id: 'ram_kingston_fury_black_b',
+    name: 'Kingston FURY Beast DDR4 16GB - Kit B',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/kingston_hyperx_fury_black_ram_module.glb',
+    brand: 'Kingston',
+    price: '890,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.045 },
+    iconSvg: ICON('ram'),
+    specs: [
+      { label: 'Dung lượng', value: '16GB (1 thanh 2x8GB)' },
+      { label: 'Loại', value: 'DDR4 DIMM không ECC' },
+      { label: 'Bus', value: '3200 MHz (PC4-25600)' }
+    ],
+    description: 'Thanh thứ hai của bộ Kingston FURY Beast, để ghép thành cặp kênh đôi.',
+    beginnerTip: '💡 Cắm vào khe A2 và B2 để chạy dual channel.'
+  },
+  {
     id: 'ram_crucial_8gb',
     name: 'Crucial 8GB DDR4 2133',
     category: HARDWARE_CATEGORIES.RAM,
@@ -305,8 +306,28 @@ export const HARDWARE_VARIANTS = [
     beginnerTip: '💡 Bus cao hơn bo mạch không chạy được - CPU và bo phải hỗ trợ bus đó thì mới tự ép xung lên.'
   },
   {
+    id: 'ram_crucial_8gb_b',
+    name: 'Crucial 8GB DDR4 2133 - Kit B',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/crucial_8_gb_ddr4_2133_ram.glb',
+    brand: 'Crucial',
+    price: '520,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.032 },
+    iconSvg: ICON('ram'),
+    specs: [
+      { label: 'Dung lượng', value: '8GB (1 thanh 1x8GB)' },
+      { label: 'Loại', value: 'DDR4 DIMM không ECC' },
+      { label: 'Bus', value: '2133 MHz (JEDEC chuẩn)' }
+    ],
+    description: 'Thanh Crucial thứ hai, cùng bus để ghép cặp kênh đôi ở khe A2 và B2.',
+    beginnerTip: '💡 Hai thanh cùng bus và cùng timing sẽ chạy ổn định nhất.'
+  },
+  {
     id: 'ram_generic_ddr4',
-    name: 'Generic DDR4 SODIMM 8GB',
+    name: 'Generic DDR4 8GB',
     category: HARDWARE_CATEGORIES.RAM,
     categoryKey: 'ram',
     tag: 'RAM',
@@ -323,6 +344,26 @@ export const HARDWARE_VARIANTS = [
     ],
     description: 'Module DDR4 dùng để so sánh hình dáng đầu nối và vị trí khe cắm.',
     beginnerTip: '💡 Khe cắm của DDR4 rộng và có nẹp khóa hai bên. Cắm lệch một răng là mainboard không nhận.'
+  },
+  {
+    id: 'ram_generic_ddr4_b',
+    name: 'Generic DDR4 8GB - Kit B',
+    category: HARDWARE_CATEGORIES.RAM,
+    categoryKey: 'ram',
+    tag: 'RAM',
+    modelPath: '/models/RAM_model/random_access_memory_ram_ddr4.glb',
+    brand: 'Generic',
+    price: '430,000 đ',
+    realSize: 0.1334,
+    footprint: { length: 0.1334, depth: 0.032 },
+    iconSvg: ICON('ram'),
+    specs: [
+      { label: 'Dung lượng', value: '8GB' },
+      { label: 'Loại', value: 'DDR4' },
+      { label: 'Bus', value: '2666 MHz' }
+    ],
+    description: 'Module DDR4 thứ hai cùng loại, để ghép cặp kênh đôi.',
+    beginnerTip: '💡 Cắm cả hai thanh vào khe A2 và B2 để bật kênh đôi.'
   },
 
   // -------------------------------------------------------------------- SSD

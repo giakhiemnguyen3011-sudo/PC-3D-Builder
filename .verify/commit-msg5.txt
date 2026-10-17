@@ -1,0 +1,42 @@
+Raise the frame rate by cutting shaded pixels, not meshes
+
+Profiled first. The room is 198 meshes and 6,638 triangles, and the whole
+animate() body measured 1.44 ms of a 16.67 ms budget - 8.6%. So geometry was
+never the bottleneck and LOD or instancing would have bought nothing. The cost
+is fill rate, which scales with the square of the pixel ratio.
+
+- PerformanceManager measures real frame time and scales the drawing buffer
+  between 0.5x and 2x to hold 45 fps. Halving the ratio removes three quarters of
+  the shaded pixels. It drops fast (x0.82) and climbs slowly (x1.08), needs two
+  agreeing samples to move, and ignores frames over 250 ms so one stall while a
+  model parses cannot collapse it to the floor. Lands exactly on the limits, or
+  a multiplicative climb would stall just short of native forever.
+  The FPS and current scale show in #perf-readout, amber below 40.
+- The shadow map was being redrawn every frame although the room is static.
+  autoUpdate is off and it refreshes every 4th frame, with markWorldChanged()
+  forcing an immediate redraw on pickup or drop so shadows stay correct.
+  2048 -> 1024, which is ~8 mm per texel across the 8 m shadow volume.
+- PCFSoftShadowMap -> PCFShadowMap. The soft filter takes roughly four times
+  the shadow samples per lit pixel, in a scene that is entirely lit pixels.
+- The POST sequence repainted a 2D canvas and re-uploaded the whole monitor
+  texture every frame. Now five times a second, still smooth over a few seconds.
+- The hover raycast was the single most expensive thing in the frame and was
+  redone 60 times a second, but its result only changes when the camera or the
+  world does. It is now cached against the camera pose and skipped when nothing
+  moved: 1.44 ms -> 0.006 ms standing still, 0.073 ms while sweeping the bench.
+- Also drops three Vector3 allocations per frame, gathers the raycast target
+  list once instead of spreading three arrays per frame, and caches the HUD
+  nodes so textContent and style are only written when the value changes.
+
+Two real bugs surfaced while doing this:
+
+- A picked-up part could still be hovered and clicked again.
+  ShelfHardware.hideItem() only sets visible = false, and three.js r174
+  raycasts invisible objects - verified, two hits either way. The hit loop now
+  skips anything invisible through its own ancestors.
+- The crosshair ray lagged a frame behind, because setFromCamera needs the
+  camera matrixWorld and that is only refreshed by renderer.render(), which
+  runs after the raycast. update() now refreshes it first.
+
+Frame timings vary widely between runs - a clean synthetic raycast measured
+0.03 to 0.20 ms - so the numbers above are medians, not single samples.

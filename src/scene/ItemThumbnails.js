@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { buildFittedModel } from './ModelFit.js';
+import { buildFittedModel, fitOptionsFor } from './ModelFit.js';
 import { loadModelCopy } from './ModelCache.js';
-import { realDimsFor } from '../data/hardwareDims.js';
 
 /**
  * Bakes a small PNG of each hardware model for the build-mode slot list.
@@ -84,11 +83,7 @@ export class ItemThumbnailBaker {
         .then(copy => {
           if (!copy) return done(null);
           try {
-            const { group, size } = buildFittedModel(copy, {
-              realSize: item.realSize,
-              realDims: realDimsFor(item),
-              flat: true
-            });
+            const { group, size } = buildFittedModel(copy, fitOptionsFor(item));
             const maxDim = Math.max(...size.toArray()) || 1;
 
             // Same 3/4 pose the inventory preview uses, so the list and the
