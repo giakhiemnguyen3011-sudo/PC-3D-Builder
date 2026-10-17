@@ -4,3 +4,5 @@ run-opencode.ps1
 *.log
 .opencode/
 
+
+.verify/
